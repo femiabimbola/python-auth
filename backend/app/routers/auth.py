@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
@@ -10,6 +10,7 @@ from app.schemas import (
     RefreshRequest,
     MessageResponse,
 )
+from app.services.email import send_welcome_email
 from app.auth import (
     hash_password,
     verify_password,
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+def register(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Register a new user and return token pair."""
     # Check if email already exists
     existing = db.query(User).filter(User.email == user_data.email).first()
@@ -55,6 +56,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.add(db_refresh_token)
     db.commit()
 
+    background_tasks.add_task(send_welcome_email, user.email, user.full_name)
     return TokenResponse(access_token=access_token, refresh_token=refresh_token_str)
 
 
