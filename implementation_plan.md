@@ -167,7 +167,6 @@ Next.js API route handler acting as a proxy to FastAPI:
 ## Project Structure
 
 ```
-C:\Users\EZ37 Solutions\.gemini\antigravity\scratch\auth-app\
 ├── backend/
 │   ├── .env
 │   ├── requirements.txt
@@ -210,6 +209,15 @@ C:\Users\EZ37 Solutions\.gemini\antigravity\scratch\auth-app\
 ```
 
 ## Verification Plan
+
+### Local Installation for backend
+1. cd backend
+2. uv venv
+3. source .venv/Scripts/activate
+4. uv pip install -r requirements.txt
+
+### Local Installation for frontend
+1. cd frontend
 
 ### Automated Tests
 1. Start FastAPI backend: `uvicorn app.main:app --reload --port 8000`
