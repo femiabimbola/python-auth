@@ -1,29 +1,34 @@
+# app/main.py
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
-from app.config import settings
-from app.database import create_tables
-from app.routers import auth, users
+from app.core.config import settings
+from app.core.database import create_tables
+from app.modules.auth.router import router as auth_router
+from app.modules.users.router import router as users_router
 
-# 1. Define the Lifespan Context Manager==
+
+# 1. Define the Lifespan Context Manager (Modern Startup/Shutdown Handling)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Actions on Startup:
     create_tables()
-    yield  # The application serves requests while here
-    # e.g., await database.disconnect()
+    yield  # The application serves requests while yielding control here
+    # Actions on Shutdown (e.g., closing redis pools, cleaning up microservice connections)
     pass
+
 
 # 2. Initialize the FastAPI Application
 app = FastAPI(
     title="Auth API",
-    description="JWT Authentication API with Access & Refresh Tokens",
+    description="JWT Authentication API with Access & Refresh Tokens using Domain Architecture",
     version="1.0.0",
-    lifespan=lifespan, # Linking the lifespan manager here
+    lifespan=lifespan,  # Linking the lifespan manager here
 )
 
-# 3. Configure CORS for Next.js frontend
+
+# 3. Configure CORS (e.g., for Next.js frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],
@@ -32,16 +37,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 4. Include Routers
-app.include_router(auth.router)
-app.include_router(users.router)
 
-# 5. Global Endpoints
-@app.get("/api/health")
+# 4. Include Domain Module Routers
+app.include_router(auth_router)
+app.include_router(users_router)
+
+
+# 5. Global Base Endpoints
+@app.get("/api/health", tags=["System Health"])
 def health_check():
     return {"status": "healthy", "message": "Auth API is running"}
 
-# 5. Global Endpoints
-@app.get("/")
+
+@app.get("/", tags=["Root"])
 def root():
-    return {"status": "healthy", "message": "Auth API is running N"}
+    return {"status": "healthy", "message": "Welcome to the Scalable Auth API Gateway"}
