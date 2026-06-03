@@ -16,9 +16,17 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./auth.db"
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # --- ADD THESE MAIL SETTINGS HERE ---
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = "noreply@yourdomain.com"
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp.gmail.com"  # Or your provider
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+
     # Pydantic v2 Modern Configuration Management
     model_config = SettingsConfigDict(
-        # Resolves down to the root directory where your .env file sits
         env_file=Path(__file__).resolve().parent.parent.parent / ".env",
         env_file_encoding="utf-8",
         case_sensitive=True, 
