@@ -12,7 +12,6 @@ from app.modules.users.router import router as users_router
 # 1. Define the Lifespan Context Manager (Modern Startup/Shutdown Handling)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Actions on Startup:
     create_tables()
     yield  # The application serves requests while yielding control here
     # Actions on Shutdown (e.g., closing redis pools, cleaning up microservice connections)
@@ -24,7 +23,7 @@ app = FastAPI(
     title="Auth API",
     description="JWT Authentication API with Access & Refresh Tokens using Domain Architecture",
     version="1.0.0",
-    lifespan=lifespan,  # Linking the lifespan manager here
+    lifespan=lifespan, 
 )
 
 

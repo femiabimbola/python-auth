@@ -1,1 +1,10 @@
+.env# Virtual environment
+.venv/
+
+# Python cache directories and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables / Secrets
 .env
