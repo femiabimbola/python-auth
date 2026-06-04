@@ -13,6 +13,10 @@ class UserLogin(BaseModel):
     def normalize_email(cls, v: str) -> str:
         return v.lower().strip()
 
+class RegistrationResponse(BaseModel):
+    """Schema for Registration response."""
+    message: str
+    requires_verification: bool
 
 class TokenResponse(BaseModel):
     """Schema for token pair response."""

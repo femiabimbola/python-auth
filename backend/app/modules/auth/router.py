@@ -3,14 +3,14 @@ from fastapi import APIRouter, Depends, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse
+from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse
 from app.modules.users.schemas import UserCreate
 from app.modules.auth import services  # Bring in our feature services
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Register a new user and return token pair."""
     access_token, refresh_token = services.register_user_workflow(db, user_data, background_tasks)
