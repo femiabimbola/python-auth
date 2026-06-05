@@ -1,5 +1,5 @@
 # app/modules/auth/router.py
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi import APIRouter, Depends, status, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -11,10 +11,22 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+def register(user_data: UserCreate, background_tasks: BackgroundTasks, request: Request,db: Session = Depends(get_db)):
     """Register a new user and return token pair."""
-    access_token, refresh_token = services.register_user_workflow(db, user_data, background_tasks)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+    # Extract client metadata for observability/logs
+    ip_address = request.client.host if request.client else "Unknown"
+    user_agent = request.headers.get("user-agent", "Unknown")
+
+    return services.register_user_workflow(
+        db=db, user_data=user_data, background_tasks=background_tasks,
+        ip_address=ip_address, user_agent=user_agent
+    )
+
+@router.get("/verify-email", status_code=status.HTTP_200_OK)
+def verify_email(token: str =  Query(..., description="Email Verification token"),db: Session = Depends(get_db)):
+    """Endpoint to process the email verification link clicked by the user."""
+    return services.verify_user_email_workflow(db=db, token=token)
 
 
 @router.post("/login", response_model=TokenResponse)

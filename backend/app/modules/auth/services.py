@@ -93,10 +93,8 @@ def register_user_workflow(
     # 5. Hand off the email delivery to FastAPI background tasks so the client isn't blocked waiting for SMTP
     full_name = f"{new_user.first_name} {new_user.last_name}"
     background_tasks.add_task(
-        send_verification_email,
-        email=new_user.email,
-        full_name=full_name,
-        verification_token=verification_token,
+        send_verification_email, email=new_user.email,
+        full_name=full_name, verification_token=verification_token,
     )
 
     # 6. Return the expected verification-first structure
@@ -104,6 +102,71 @@ def register_user_workflow(
         message="Registration successful. Please check your email to verify your account.",
         requires_verification=True,
     )
+
+
+def verify_user_email_workflow(db: Session, token: str) -> dict:
+    """
+    Validates the verification token, activates the user, and marks the token as used.
+    """
+    # 1. Look up the token in the database
+    token_record = (
+        db.query(EmailVerificationToken)
+        .filter(EmailVerificationToken.token == token)
+        .first()
+    )
+
+    if not token_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid verification token.",
+        )
+
+    # 2. Check if the token has already been used
+    if token_record.used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This token has already been used.",
+        )
+
+   # 3. Check if the token has expired
+    # Ensure the database datetime is evaluated as UTC to match datetime.now(timezone.utc)
+    db_expires_at = token_record.expires_at
+    if db_expires_at.tzinfo is None:
+        db_expires_at = db_expires_at.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > db_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification token has expired. Please request a new one.",
+        )
+
+    # 4. Fetch the associated user
+    user = db.query(User).filter(User.id == token_record.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User associated with this token was not found.",
+        )
+
+    # 5. Execute updates inside a single transaction block
+    try:
+        # If the user is already verified (e.g., race condition), we can just proceed or notify
+        user.is_verified = True
+        token_record.used = True
+        
+        db.commit()
+        logger.info(f"User email verified successfully for user_id: {user.id}")
+        
+    except Exception as exc:
+        db.rollback()
+        logger.exception(f"Unexpected database error during email verification for token: {token}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to complete email verification due to a server error.",
+        )
+
+    return {"message": "Email verified successfully! You can now log in."}
+
 
 
 def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str, str]:

@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
+    APP_BASE_URL: str = "http://localhost:8000"
+
     # Security & JWT Settings
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
