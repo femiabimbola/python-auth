@@ -28,7 +28,7 @@ async def send_verification_email(email: str, full_name: str, verification_token
     Sends a verification email containing the unique registration token.
     """
     # Replace this link with your actual frontend verification route later
-    verification_link = f"https://yourdomain.com/verify-email?token={verification_token}"
+    verification_link = f"{settings.APP_BASE_URL}/api/auth/verify-email?token={verification_token}"
     
     body_content = (
         f"Hello {full_name},\n\n"

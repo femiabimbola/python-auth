@@ -18,17 +18,10 @@ class Base(DeclarativeBase):
     pass
 
 
-# =========================================================================
-# DOMAIN MODEL REGISTRATION (Crucial for the Scalable Folder Structure)
-# =========================================================================
 # We explicitly import the split models here. This registers them into 
 # Base.metadata so that `create_tables()` or Alembic migrations can detect them.
 from app.modules.users.models import User
-from app.modules.auth.models import RefreshToken
-
-# When you add new feature modules (e.g., app.modules.products), import their models below:
-# from app.modules.products.models import Product
-# =========================================================================
+from app.modules.auth.models import RefreshToken, EmailVerificationToken
 
 
 def create_tables() -> None:
