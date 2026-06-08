@@ -20,7 +20,8 @@ class User(Base):
 
     # Relationship to refresh tokens (SQLAlchemy resolves this string at runtime)
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
-    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    user_profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    
 
 class UserProfile(Base):
     """User profile model for storing optional/extended demographics."""
@@ -38,4 +39,4 @@ class UserProfile(Base):
     phone_number = Column(String(30), nullable=True)  # String to handle country codes like '+1' or '+234'
 
     # Bidirectional relationship back to the User model
-    user = relationship("User", back_populates="profile")
+    user = relationship("User", back_populates="user_profile")

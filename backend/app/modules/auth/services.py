@@ -45,6 +45,7 @@ def register_user_workflow(
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             is_verified=False,
+            is_active=False,
         )
         db.add(new_user)
 
@@ -93,7 +94,7 @@ def register_user_workflow(
     # 5. Hand off the email delivery to FastAPI background tasks so the client isn't blocked waiting for SMTP
     full_name = f"{new_user.first_name} {new_user.last_name}"
     background_tasks.add_task(
-        send_verification_email, email=new_user.email,
+        send_verification_email, email=user_data.email,
         full_name=full_name, verification_token=verification_token,
     )
 
@@ -128,7 +129,7 @@ def verify_user_email_workflow(db: Session, token: str) -> dict:
             detail="This token has already been used.",
         )
 
-   # 3. Check if the token has expired
+    # 3. Check if the token has expired
     # Ensure the database datetime is evaluated as UTC to match datetime.now(timezone.utc)
     db_expires_at = token_record.expires_at
     if db_expires_at.tzinfo is None:
@@ -148,14 +149,18 @@ def verify_user_email_workflow(db: Session, token: str) -> dict:
             detail="User associated with this token was not found.",
         )
 
-    # 5. Execute updates inside a single transaction block
+    # 5. Fast-track if the user is already verified and active (e.g. accidental double clicks)
+    if user.is_verified and user.is_active:
+        return {"message": "Your account is already verified and active. Please log in."}
+
+    # 6. Execute updates inside a single transaction block
     try:
-        # If the user is already verified (e.g., race condition), we can just proceed or notify
         user.is_verified = True
+        user.is_active = True 
         token_record.used = True
         
         db.commit()
-        logger.info(f"User email verified successfully for user_id: {user.id}")
+        logger.info(f"User email verified and account activated successfully for user_id: {user.id}")
         
     except Exception as exc:
         db.rollback()
@@ -165,8 +170,7 @@ def verify_user_email_workflow(db: Session, token: str) -> dict:
             detail="Unable to complete email verification due to a server error.",
         )
 
-    return {"message": "Email verified successfully! You can now log in."}
-
+    return {"message": "Email verified successfully! Your account is active and you can now log in."}
 
 
 def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str, str]:
