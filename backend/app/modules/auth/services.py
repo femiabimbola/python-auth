@@ -15,7 +15,7 @@ from app.core.security import (
 )
 from app.modules.users.models import User
 from app.modules.auth.models import RefreshToken, EmailVerificationToken
-from app.modules.auth.schemas import UserLogin, RefreshRequest, RegistrationResponse
+from app.modules.auth.schemas import UserLogin, RefreshRequest, RegistrationResponse, EmailRequestSchema
 from app.modules.users.schemas import UserCreate
 from datetime import datetime, timedelta, timezone
 from app.services.email import send_verification_email
@@ -130,7 +130,6 @@ def verify_user_email_workflow(db: Session, token: str) -> dict:
         )
 
     # 3. Check if the token has expired
-    # Ensure the database datetime is evaluated as UTC to match datetime.now(timezone.utc)
     db_expires_at = token_record.expires_at
     if db_expires_at.tzinfo is None:
         db_expires_at = db_expires_at.replace(tzinfo=timezone.utc)
@@ -190,6 +189,13 @@ def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated",
         )
+    
+    # Check verification AFTER password and active status checks
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email is not verified. Please check your inbox or request a new verification link.",
+        )
 
     access_token = create_access_token(user.id)
     refresh_token_str, jti, expires_at = create_refresh_token(user.id)
@@ -203,11 +209,10 @@ def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str
     return access_token, refresh_token_str
 
 
-def rotate_refresh_token_workflow(
-    db: Session, request: RefreshRequest
-) -> tuple[str, str]:
+def rotate_refresh_token_workflow(db: Session, request: RefreshRequest) -> tuple[str, str]:
     """Validates refresh token states, enforcing safety checks against theft/reuse."""
     payload = verify_token(request.refresh_token, expected_type="refresh")
+    
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -274,3 +279,27 @@ def revoke_session_workflow(db: Session, request: RefreshRequest) -> None:
             if db_token:
                 db_token.is_revoked = True
                 db.commit()
+
+
+def resend_verification_workflow(
+    db: Session, email_schema: EmailRequestSchema,   background_tasks: BackgroundTasks
+) -> None:
+    """Generates a new verification token and sends it via background tasks."""
+    
+    user = db.execute(select(User).where(User.email == email_schema.email)
+    ).scalar_one_or_none()
+
+    # SECURITY: If the user doesn't exist or is already verified, return a silent success message
+    if not user or user.is_verified or not user.is_active:
+        return
+
+    # 1. Generate your verification token (however your system currently creates it)
+    verification_token = secrets.token_urlsafe(32)
+
+    # 2. Hand off to background tasks to keep your API blazing fast
+    full_name = f"{user.first_name} {user.last_name}"
+    background_tasks.add_task(
+        send_verification_email, email=user.email,
+        full_name=full_name, 
+        verification_token=verification_token,
+    )
