@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pearl:     #FAFAF8;
+  --lavender:  #F0EEFF;
+  --indigo:    #2D1B69;
+  --violet:    #7C5CFC;
+  --violet-lt: #A991FD;
+  --sage:      #A8D5BA;
+  --mist:      #E8E4FF;
+  --ink:       #1A1028;
+  --mid:       #6B6080;
+  --border:    rgba(124,92,252,0.14);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--pearl);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Custom ambient orb animation/blur backdrop */
+.ambient-orb {
+  background: radial-gradient(circle at 50% 40%,
+    rgba(240,238,255,1) 0%,
+    rgba(200,188,255,0.55) 35%,
+    rgba(168,145,253,0.18) 60%,
+    transparent 75%);
+  filter: blur(2px);
+}

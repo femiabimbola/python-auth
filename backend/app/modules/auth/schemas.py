@@ -1,6 +1,6 @@
 # app/modules/auth/schemas.py
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 
 
 class UserLogin(BaseModel):
@@ -41,3 +41,8 @@ class RefreshRequest(BaseModel):
 class MessageResponse(BaseModel):
     """Generic message response."""
     message: str
+
+
+class EmailRequestSchema(BaseModel):
+    """Schema to validate an incoming email address for resending verification."""
+    email: EmailStr = Field(..., description="The user's registered email address")

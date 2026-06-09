@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse
+from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema
 from app.modules.users.schemas import UserCreate
 from app.modules.auth import services  # Bring in our feature services
 
@@ -48,3 +48,17 @@ def logout(request: RefreshRequest, db: Session = Depends(get_db)):
     """Logout by revoking active refresh session strings."""
     services.revoke_session_workflow(db, request)
     return MessageResponse(message="Successfully logged out")
+
+@router.post( "/resend-verification", status_code=status.HTTP_200_OK, summary="Resend verification email")
+def resend_verification( payload: EmailRequestSchema, background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Always returns a 200 OK to prevent email enumeration.
+    """
+    services.resend_verification_workflow(
+        db=db, email_schema=payload, 
+        background_tasks=background_tasks
+    )
+    
+    return {"detail": "If the email is registered and unverified, a new link has been sent."}
