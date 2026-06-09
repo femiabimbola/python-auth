@@ -1,0 +1,133 @@
+.hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 100px 24px 80px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--violet);
+  background: var(--mist);
+  border: 1px solid var(--border);
+  padding: 6px 16px;
+  border-radius: 100px;
+  margin-bottom: 36px;
+}
+
+.eyebrowDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sage);
+}
+
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--indigo);
+  max-width: 800px;
+  margin-bottom: 24px;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--violet);
+}
+
+.heroSub {
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--mid);
+  max-width: 520px;
+  margin-bottom: 44px;
+}
+
+.heroCta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 72px;
+}
+
+.btnLarge {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--violet), #5B3EE8);
+  border: none;
+  cursor: pointer;
+  padding: 14px 32px;
+  border-radius: 12px;
+  text-decoration: none;
+  box-shadow: 0 4px 24px rgba(124, 92, 252, 0.35);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+
+.btnLarge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(124, 92, 252, 0.45);
+}
+
+.btnOutline {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--indigo);
+  background: transparent;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  padding: 13px 30px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.btnOutline:hover {
+  border-color: var(--violet-lt);
+  background: var(--mist);
+}
+
+.trust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--mid);
+}
+
+.trustAvatars {
+  display: flex;
+}
+
+.trustAvatars span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--pearl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  margin-left: -8px;
+}
+
+.trustAvatars span:first-child {
+  margin-left: 0;
+}
