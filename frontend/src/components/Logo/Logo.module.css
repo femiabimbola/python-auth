@@ -1,0 +1,29 @@
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.logoMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--violet), #5B3EE8);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.logoMark svg {
+  width: 16px;
+  height: 16px;
+}
+
+.logoName {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--indigo);
+  letter-spacing: -0.01em;
+}

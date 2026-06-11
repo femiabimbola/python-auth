@@ -1,0 +1,82 @@
+.features {
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  margin: 0 auto 120px;
+  padding: 0 24px;
+}
+
+.sectionLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--violet);
+  margin-bottom: 14px;
+}
+
+.sectionTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--indigo);
+  max-width: 500px;
+  margin-bottom: 60px;
+}
+
+.featGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.featCard {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.featCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(45, 27, 105, 0.1);
+}
+
+.featIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--mist), var(--lavender));
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+}
+
+.featIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.featTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--indigo);
+  margin-bottom: 10px;
+}
+
+.featDesc {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--mid);
+}
+
+@media (max-width: 768px) {
+  .featGrid {
+    grid-template-columns: 1fr;
+  }
+}

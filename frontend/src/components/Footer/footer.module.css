@@ -1,0 +1,67 @@
+.footerContainer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 40px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Logo specific styles assuming you have standard global definitions, 
+   otherwise adapt these to match your existing design */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.logoMark {
+  width: 24px;
+  height: 24px;
+}
+
+.logoName {
+  font-weight: 600;
+  color: white;
+}
+
+.footerCopy {
+  font-size: 0.8rem;
+  color: var(--mid);
+}
+
+.footerLinks {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footerLinks a {
+  font-size: 0.8rem;
+  color: var(--mid);
+  text-decoration: none;
+  transition: color 0.18s;
+}
+
+.footerLinks a:hover {
+  color: var(--violet);
+}
+
+/* Optional mobile responsiveness */
+@media (max-width: 640px) {
+  .footerContainer {
+    flex-direction: column;
+    text-align: center;
+    padding: 30px 24px;
+  }
+
+  .footerLinks {
+    justify-content: center;
+  }
+}
