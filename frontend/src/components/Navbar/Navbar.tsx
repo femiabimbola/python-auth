@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { Logo } from '../UI/Logo/Logo';
+import { Logo } from '../Logo/Logo';
 import styles from './Navbar.module.css';
 
 const NAV_LINKS = [

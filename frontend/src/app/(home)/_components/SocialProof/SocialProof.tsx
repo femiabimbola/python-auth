@@ -1,4 +1,4 @@
-import { TESTIMONIALS } from '@/lib/testimonials';
+import { TESTIMONIALS } from '@/data/testimonials';
 import styles from './SocialProof.module.css';
 
 export function SocialProof() {
