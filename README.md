@@ -2,10 +2,11 @@
 1. cd backend
 2. uv venv
 3. source .venv/Scripts/activate
-4. uv pip install -r requirements.txt
+4. uv pip install -r requirement.txt
 
 ### Local Installation for frontend
 1. cd frontend
+2. npm install
 
 ### Automated Tests
 1. Start FastAPI backend: `uvicorn app.main:app --reload --port 8000`
