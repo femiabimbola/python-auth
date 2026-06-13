@@ -1,5 +1,5 @@
 
-import { OrbBackground } from '@/app/(home)/_components/OrbBackground/OrbBackground';
+import { OrbBackground } from '@/components/OrbBackground/OrbBackground';
 import { Navbar } from '@/components/Navbar/Navbar';
 
 import { Hero } from '@/app/(home)/_components/Hero/Hero';
