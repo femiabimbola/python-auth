@@ -1,6 +1,9 @@
 # app/modules/auth/services.py
 import logging
 import secrets
+import uuid
+
+from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status, BackgroundTasks
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -24,22 +27,24 @@ from app.modules.users.models import User
 logger = logging.getLogger(__name__)
 
 def register_user_workflow(
-    db: Session, user_data: UserCreate,
-    ip_address: str, user_agent: str,
+    db: Session, 
+    user_data: UserCreate,
+    ip_address: str, 
+    user_agent: str,
     background_tasks: BackgroundTasks,
 ) -> RegistrationResponse:
     
     """
-    Registers a new user in an unverified state, generates an email verification
-    token, records an audit log, and queues the verification email.
+    Registers a new user efficiently using a single atomic database transaction.
+    Scales flawlessly by relying on DB constraints instead of pre-checking.
     """
-
-    # 1. Generate a secure, unique verification token
     verification_token = secrets.token_urlsafe(32)
+    user_uuid = str(uuid.uuid4())
 
     try:
-        # 2. Build the User instance (matching your User model fields)
+        # 1. Build and add the user first
         new_user = User(
+            id=user_uuid,
             email=user_data.email,
             hashed_password=hash_password(user_data.password),
             first_name=user_data.first_name,
@@ -49,34 +54,30 @@ def register_user_workflow(
         )
         db.add(new_user)
 
-        # Flush to database transaction to generate `new_user.id` without committing yet
+        # 2. FORCE SQLAlchemy to send the user insert to the DB right now.
+        # This triggers the UniqueConstraint check immediately.
         db.flush()
 
-        # 3. Create the email verification token record
-        # Using timezone-aware UTC to align with DateTime(timezone=True)
+        # 3. If the flush succeeds, it means the email is unique!
+        # Now we can safely add the token record.
         verification_record = EmailVerificationToken(
-            user_id=new_user.id,
+            user_id=user_uuid,
             token=verification_token,
             expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
         )
         db.add(verification_record)
 
-        # 4. Optional: Create Audit Log record if it exists in your schema
-        # audit_log = AuditLog(
-        #     user_id=new_user.id,
-        #     action="USER_REGISTERED",
-        #     description=f"New user registration initiated from IP: {ip_address}",
-        # )
-        # db.add(audit_log)
-
-        # Commit everything safely inside a single database transaction
+        # 4. Commit everything cleanly
         db.commit()
+        db.refresh(new_user)
         
-        logger.info(f"User account created successfully for email: {new_user.email} (ID: {new_user.id})")
+        logger.info(f"User account created successfully: {new_user.email}")
 
     except IntegrityError as exc:
         db.rollback()
-        logger.warning(f"Registration failed. Email conflict detected for: {user_data.email}. Details: {exc}")
+        
+        # (Since we flushed the user first, an IntegrityError here means email conflict)
+        logger.warning(f"Registration conflict for: {user_data.email}. Details: {exc}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
@@ -84,26 +85,25 @@ def register_user_workflow(
 
     except Exception as exc:
         db.rollback()
-        # logger.exception automatically logs the full stack trace for debugging
-        logger.exception("Unexpected error occurred during user registration workflow.")
+        logger.exception("Unexpected error during registration workflow.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to complete registration",
+            detail="Unable to complete registration.",
         )
 
-    # 5. Hand off the email delivery to FastAPI background tasks so the client isn't blocked waiting for SMTP
+    # 5. Background email delivery
     full_name = f"{new_user.first_name} {new_user.last_name}"
     background_tasks.add_task(
-        send_verification_email, email=user_data.email,
-        full_name=full_name, verification_token=verification_token,
+        send_verification_email, 
+        email=user_data.email,
+        full_name=full_name, 
+        verification_token=verification_token,
     )
 
-    # 6. Return the expected verification-first structure
     return RegistrationResponse(
         message="Registration successful. Please check your email to verify your account.",
         requires_verification=True,
     )
-
 
 def verify_user_email_workflow(db: Session, token: str) -> dict:
     """

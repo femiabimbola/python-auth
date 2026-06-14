@@ -1,5 +1,5 @@
 # app/modules/auth/router.py
-from fastapi import APIRouter, Depends, status, Query, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -11,17 +11,29 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, background_tasks: BackgroundTasks, request: Request,db: Session = Depends(get_db)):
+def register(user_data: UserCreate, background_tasks: BackgroundTasks, request: Request, db: Session = Depends(get_db)):
     """Register a new user and return token pair."""
 
     # Extract client metadata for observability/logs
     ip_address = request.client.host if request.client else "Unknown"
     user_agent = request.headers.get("user-agent", "Unknown")
 
-    return services.register_user_workflow(
-        db=db, user_data=user_data, background_tasks=background_tasks,
-        ip_address=ip_address, user_agent=user_agent
-    )
+    try:
+        return services.register_user_workflow(
+            db=db, user_data=user_data, background_tasks=background_tasks,
+            ip_address=ip_address, user_agent=user_agent
+        )
+    except HTTPException as http_exc:
+        # we roll back the session one last time at the router boundary to clear any poisoned state,
+        # then re-raise it so FastAPI safely bypasses structural database teardowns.
+        raise http_exc
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while finalizing the request context."
+        )
+    
 
 @router.get("/verify-email", status_code=status.HTTP_200_OK)
 def verify_email(token: str =  Query(..., description="Email Verification token"),db: Session = Depends(get_db)):

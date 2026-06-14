@@ -29,7 +29,11 @@ const registerSchema = z
     email: z.string().email("Please enter a valid email address."),
     first_name: z.string().min(2, "First name must be at least 2 characters."),
     last_name: z.string().min(2, "Last name must be at least 2 characters."),
-    password: z.string().min(8, "Password must be at least 8 characters long."),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters long.")
+      .regex(/[0-9]/, "Password must contain at least one number.")
+      .regex(/[^A-Za-z0-9]/, "Password must contain at least one symbol."),
     confirm_password: z.string(),
   })
   .refine((data) => data.password === data.confirm_password, {
@@ -57,46 +61,63 @@ export default function RegisterPage() {
     },
   });
 
-  // 3. Post request handler
-  async function onSubmit(values: RegisterFormValues) {
-    setIsLoading(true);
-    setApiError(null);
+// 3. Post request handler
+async function onSubmit(values: RegisterFormValues) {
+  setIsLoading(true);
+  setApiError(null);
 
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-      const response = await fetch(`${apiUrl}/api/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: values.email,
-          first_name: values.first_name,
-          last_name: values.last_name,
-          password: values.password,
-        }),
-      });
+    const response = await fetch(`${apiUrl}/api/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: values.email,
+        first_name: values.first_name,
+        last_name: values.last_name,
+        password: values.password,
+        confirm_password : values.confirm_password
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Something went wrong during registration.",
-        );
+    if (!response.ok) {
+      // 1. If it's a validation error, map errors directly to the inputs 
+      if (response.status === 422 && data.detail && Array.isArray(data.detail)) {
+        data.detail.forEach((err: any) => {
+          const fieldName = err.loc[1] as keyof RegisterFormValues;
+          if (fieldName) {
+            form.setError(fieldName, {
+              type: "server",
+              message: err.msg.replace(/^Value error,\s*/i, "")
+            });
+          }
+        });
+        return; // Stop execution here so it doesn't fall through to the global error catcher
       }
-      setIsSuccess(true);
-      form.reset();
-    } catch (error: any) {
-      setApiError(error.message || "Failed to connect to the server.");
-    } finally {
-      setIsLoading(false);
+
+      // 2. Fallback fallback for non-422 errors (e.g., 400 Bad Request, 500 Server Error)
+      let errorMessage =  data.detail || data.message || "Something went wrong during registration.";
+      throw new Error(errorMessage);
     }
+    
+    setIsSuccess(true);
+    form.reset();
+  } catch (error: any) {
+    // This catches your thrown Error or general network connection failures
+    setApiError(error.message || "Failed to connect to the server.");
+  } finally {
+    setIsLoading(false);
   }
+}
 
   return (
-    <Card className="mx-auto w-full sm:max-w-md bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md shadow-lg border border-zinc-200 dark:border-zinc-800">
-      <CardHeader className="text-center">
+    <Card className="w-full bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md shadow-xl border border-zinc-200/80 dark:border-zinc-800/80">
+      <CardHeader className="text-center space-y-1">
         <CardTitle className="text-2xl font-semibold tracking-tight">
           Create an account
         </CardTitle>
@@ -118,9 +139,8 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* 4. Form Submission wrapper using standard RHF methods */}
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <FieldGroup className="space-y-4">
+          <div className="space-y-4">
             {/* First & Last Name row */}
             <div className="grid grid-cols-2 gap-4">
               <Controller
@@ -200,11 +220,12 @@ export default function RegisterPage() {
                       type={showPassword ? "text" : "password"}
                       disabled={isLoading}
                       aria-invalid={fieldState.invalid}
+                      className="pr-10" /* Prevents text trailing under the visibility toggle icon */
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -237,11 +258,11 @@ export default function RegisterPage() {
               )}
             />
 
-            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+            <Button type="submit" className="w-full !mt-6" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Register Account
             </Button>
-          </FieldGroup>
+          </div>
         </form>
       </CardContent>
     </Card>

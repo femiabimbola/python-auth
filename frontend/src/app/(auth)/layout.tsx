@@ -1,6 +1,6 @@
+// app/(auth)/layout.tsx or your equivalent layout file
 import React from 'react';
 import { OrbBackground } from '@/components/OrbBackground/OrbBackground';
-
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -8,11 +8,9 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }}>
-      {/* 1. The background element */}
+    <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-zinc-50 dark:bg-zinc-950">
       <OrbBackground />
-      {/* 2. The page content (Login / Register forms) */}
-      <main style={{ position: 'relative', zIndex: 1 }}>
+      <main className="relative z-10 w-full max-w-md">
         {children}
       </main>
     </div>
