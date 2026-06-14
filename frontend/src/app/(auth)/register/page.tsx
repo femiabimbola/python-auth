@@ -220,7 +220,7 @@ async function onSubmit(values: RegisterFormValues) {
                       type={showPassword ? "text" : "password"}
                       disabled={isLoading}
                       aria-invalid={fieldState.invalid}
-                      className="pr-10" /* Prevents text trailing under the visibility toggle icon */
+                      className="pr-10" 
                     />
                     <button
                       type="button"
@@ -258,11 +258,12 @@ async function onSubmit(values: RegisterFormValues) {
               )}
             />
 
-            <Button type="submit" className="w-full !mt-6" disabled={isLoading}>
+            <Button type="submit" className="w-full mt-6" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Register Account
             </Button>
           </div>
+          <h6 className="text-center py-2"> Already have an account? <a href="/login" className="text-blue-700">Log in here</a></h6>
         </form>
       </CardContent>
     </Card>
