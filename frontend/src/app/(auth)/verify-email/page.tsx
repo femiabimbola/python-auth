@@ -26,7 +26,8 @@ function VerifyEmailContent() {
     const verifyToken = async () => {
       try {
         // Calling your backend API
-        const response = await fetch(`https://api.yourdomain.com/api/auth/verify-email?token=${token}`, {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const response = await fetch(`${apiUrl}/api/auth/verify-email?token=${token}`, {
           method: "GET", 
         });
 
@@ -69,7 +70,7 @@ function VerifyEmailContent() {
 
       <CardFooter className="flex justify-center">
         {status === "success" && (
-          <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white" onClick={() => router.push("/login")}>
+          <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer" onClick={() => router.push("/login")}>
             Sign In
           </Button>
         )}
