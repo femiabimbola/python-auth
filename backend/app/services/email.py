@@ -47,3 +47,31 @@ async def send_verification_email(email: str, full_name: str, verification_token
     
     fm = FastMail(conf)
     await fm.send_message(message)
+
+
+async def send_password_reset_email(email: str, full_name: str, reset_token: str):
+    """
+    Sends a password reset email containing the unique reset token.
+    """
+    reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+
+    print(reset_link)
+    
+    body_content = (
+        f"Hello {full_name},\n\n"
+        f"We received a request to reset the password for your account.\n\n"
+        f"Click the link below to reset your password:\n"
+        f"{reset_link}\n\n"
+        f"This link will expire in 1 hour.\n\n"
+        f"If you did not request a password reset, please ignore this email — your password will remain unchanged."
+    )
+
+    message = MessageSchema(
+        subject="Password Reset Request",
+        recipients=[email],
+        body=body_content,
+        subtype=MessageType.plain
+    )
+    
+    fm = FastMail(conf)
+    await fm.send_message(message)

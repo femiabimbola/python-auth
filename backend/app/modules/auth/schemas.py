@@ -46,3 +46,6 @@ class MessageResponse(BaseModel):
 class EmailRequestSchema(BaseModel):
     """Schema to validate an incoming email address for resending verification."""
     email: EmailStr = Field(..., description="The user's registered email address")
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
