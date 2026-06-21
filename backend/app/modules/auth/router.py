@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, B
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema
+from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema, PasswordResetRequest
 from app.modules.users.schemas import UserCreate
 from app.modules.auth import services  # Bring in our feature services
 
@@ -62,15 +62,22 @@ def logout(request: RefreshRequest, db: Session = Depends(get_db)):
     return MessageResponse(message="Successfully logged out")
 
 @router.post( "/resend-verification", status_code=status.HTTP_200_OK, summary="Resend verification email")
-def resend_verification( payload: EmailRequestSchema, background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """
-    Always returns a 200 OK to prevent email enumeration.
-    """
+def resend_verification( payload: EmailRequestSchema, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Always returns a 200 OK to prevent email enumeration."""
     services.resend_verification_workflow(
         db=db, email_schema=payload, 
         background_tasks=background_tasks
     )
-    
     return {"detail": "If the email is registered and unverified, a new link has been sent."}
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_200_OK)
+def request_password_reset(payload: PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+):
+    try:
+        return services.request_password_reset_workflow(db, payload.email, background_tasks)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to process password reset request.",
+        )

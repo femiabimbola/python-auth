@@ -129,7 +129,7 @@ async function onSubmit(values: RegisterFormValues) {
       <CardContent>
         {isSuccess && (
           <div className="mb-4 p-3 text-sm text-green-600 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-            Registration successful! You can now log in.
+            Registration successful. Please check your email to verify your account
           </div>
         )}
 
