@@ -327,8 +327,9 @@ def request_password_reset_workflow(db: Session, email: str, background_tasks: B
         logger.exception(f"Failed to create reset token for: {email_normalized}")
         raise  # Route catches this and returns 500
 
+    full_name = f"{user.first_name} {user.last_name}"
     background_tasks.add_task(
-        send_password_reset_email, email=user.email,full_name=user.full_name,
+        send_password_reset_email, email=user.email, full_name=full_name,
         reset_token=token
     )
 
