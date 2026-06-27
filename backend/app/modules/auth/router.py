@@ -1,11 +1,13 @@
 # app/modules/auth/router.py
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema, PasswordResetRequest
+from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema, PasswordResetRequest, PasswordResetVerify
 from app.modules.users.schemas import UserCreate
 from app.modules.auth import services  # Bring in our feature services
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -63,7 +65,7 @@ def logout(request: RefreshRequest, db: Session = Depends(get_db)):
 
 @router.post( "/resend-verification", status_code=status.HTTP_200_OK, summary="Resend verification email")
 def resend_verification( payload: EmailRequestSchema, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """Always returns a 200 OK to prevent email enumeration."""
+    """Resend email if not received before OK to prevent email enumeration."""
     services.resend_verification_workflow(
         db=db, email_schema=payload, 
         background_tasks=background_tasks
@@ -80,4 +82,30 @@ def request_password_reset(payload: PasswordResetRequest, background_tasks: Back
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to process password reset request.",
+        )
+    
+
+@router.post("/password-reset/verify", status_code=status.HTTP_200_OK)
+def verify_reset_token_endpoint(
+    payload: PasswordResetVerify,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify token is valid AND change password in one step.
+    Returns 200 with generic message even on failure (security through obscurity).
+    """
+    try:
+        result = services.change_password_workflow(db, payload.token, payload.new_password)
+        return result
+
+    except ValueError as e:
+        # Token invalid/expired - still return 200 to prevent email enumeration
+        logger.warning(f"Password reset failed: {e}")
+        return {"message": "If the token is valid, your password has been reset."}
+
+    except Exception:
+        logger.exception("Password reset failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to process password reset."
         )
