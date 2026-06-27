@@ -362,8 +362,6 @@ def resend_verification_workflow(
     )
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 def verify_reset_token(db: Session, token: str) -> User:
     """Verify token is valid and not expired. Returns user or raises exception."""
     
@@ -393,12 +391,12 @@ def verify_reset_token(db: Session, token: str) -> User:
 def change_password_workflow(db: Session, token: str, new_password: str) -> dict:
     """Verify token and update password."""
     user = verify_reset_token(db, token)
-    print(user)
+
     # Hash new password
-    hashed_password = pwd_context.hash(new_password)
+    hashed_password = hash_password(new_password)
 
     # Update user password
-    user.password_hash = hashed_password
+    user.hashed_password = hashed_password
     user.updated_at = datetime.now(timezone.utc)
 
     # Delete ALL reset tokens for this user (security: invalidate all tokens)

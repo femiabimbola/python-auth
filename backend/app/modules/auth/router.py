@@ -86,9 +86,7 @@ def request_password_reset(payload: PasswordResetRequest, background_tasks: Back
     
 
 @router.post("/password-reset/verify", status_code=status.HTTP_200_OK)
-def verify_reset_token_endpoint(
-    payload: PasswordResetVerify,
-    db: Session = Depends(get_db)
+def verify_reset_token_endpoint(payload: PasswordResetVerify, db: Session = Depends(get_db)
 ):
     """
     Verify token is valid AND change password in one step.
