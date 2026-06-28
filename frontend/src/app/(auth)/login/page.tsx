@@ -22,10 +22,10 @@ import { Input } from "@/components/ui/input";
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z
-      .string()
-      .min(8, "Password must be at least 8 characters long.")
-      .regex(/[0-9]/, "Password must contain at least one number.")
-      .regex(/[^A-Za-z0-9]/, "Password must contain at least one symbol."),
+    .string()
+    .min(8, "Password must be at least 8 characters long.")
+    .regex(/[0-9]/, "Password must contain at least one number.")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one symbol."),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -68,11 +68,6 @@ export default function LoginPage() {
 
   const onSubmit = useCallback(
     async (values: LoginFormValues) => {
-      if (!API_URL) {
-        setApiError("Server configuration error. Please contact support.");
-        return;
-      }
-
       // Abort any previous ongoing requests
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -82,7 +77,7 @@ export default function LoginPage() {
       setApiError(null);
 
       try {
-        const response = await fetch(`${API_URL}/api/auth/login`, {
+        const response = await fetch("/api/auth/login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -91,14 +86,13 @@ export default function LoginPage() {
           signal: controller.signal,
         });
 
-        // Safe JSON parsing fallback to prevent crashes on non-JSON server errors
-        const data: LoginSuccessResponse & ApiErrorResponse = await response
+        const data = await response
           .json()
-          .catch(() => ({} as LoginSuccessResponse & ApiErrorResponse));
+          .catch(() => ({}) as LoginSuccessResponse & ApiErrorResponse);
 
         if (!response.ok) {
           if (response.status === 422 && Array.isArray(data.detail)) {
-            data.detail.forEach((err) => {
+            data.detail.forEach((err: any) => {
               const fieldName = err.loc[1] as keyof LoginFormValues;
               if (fieldName) {
                 form.setError(fieldName, {
@@ -110,16 +104,11 @@ export default function LoginPage() {
             return;
           }
 
-          const errorMessage =
-            typeof data.detail === "string"
+          const errorMessage = typeof data.detail === "string"
               ? data.detail
               : data.message || "Invalid email or password.";
           throw new Error(errorMessage);
         }
-
-        // Storing tokens securely
-        sessionStorage.setItem("access_token", data.access_token);
-        sessionStorage.setItem("refresh_token", data.refresh_token);
 
         router.push("/dashboard");
       } catch (error) {
@@ -135,7 +124,7 @@ export default function LoginPage() {
         setIsLoading(false);
       }
     },
-    [form, router]
+    [form, router],
   );
 
   return (
@@ -161,7 +150,6 @@ export default function LoginPage() {
 
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <div className="space-y-4">
-            
             {/* Email Field */}
             <Controller
               name="email"
@@ -193,7 +181,7 @@ export default function LoginPage() {
                 <Field data-invalid={fieldState.invalid}>
                   <div className="flex items-center justify-between">
                     <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                    <a 
+                    <a
                       href="/forgot-password"
                       className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
                     >
@@ -213,7 +201,9 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={togglePasswordVisibility}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                       aria-pressed={showPassword}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                     >
@@ -235,7 +225,7 @@ export default function LoginPage() {
 
           <p className="text-center py-4 text-sm text-zinc-500 dark:text-zinc-400">
             Don&apos;t have an account?{" "}
-            <a 
+            <a
               href="/register"
               className="text-blue-600 font-medium hover:underline dark:text-blue-400"
             >
