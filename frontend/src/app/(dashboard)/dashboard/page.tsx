@@ -9,7 +9,6 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import StatCard from "../_components/StatCard";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   AreaChart,
@@ -235,7 +234,7 @@ export default function DashboardPage() {
                 }}
                 itemStyle={{ color: "white" }}
                 labelStyle={{ color: "var(--violet-lt)", fontWeight: 600 }}
-                formatter={(v: number) => [`₦${(v / 1000).toFixed(1)}k`]}
+                // formatter={(v: number) => [`₦${(v / 1000).toFixed(1)}k`]}
               />
               <Area
                 type="monotone"

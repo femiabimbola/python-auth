@@ -6,12 +6,7 @@ import {Topbar} from "./_components/Topbar"
 import Footer from "./_components/Footer";
 
 
-const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Lumina Dashboard",
-  description: "Analytics and business intelligence dashboard",
-};
 
 export default function RootLayout({
   children,
@@ -19,8 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+
         <div
           className="flex h-screen overflow-hidden"
           style={{ background: "var(--pearl)" }}
@@ -38,7 +32,6 @@ export default function RootLayout({
             <Footer />
           </div>
         </div>
-      </body>
-    </html>
+  
   );
 }
