@@ -36,6 +36,8 @@ async function proxyRequest(
   pathSegments: string[]
 ) {
   const path = pathSegments.join('/');
+  
+  // Read cookies from the request (works for both client and server calls)
   const cookieStore = request.cookies;
   let accessToken = cookieStore.get('access_token')?.value;
   const refreshToken = cookieStore.get('refresh_token')?.value;
@@ -45,7 +47,7 @@ async function proxyRequest(
       ? await request.text()
       : undefined;
 
-  // First attempt with current access token
+  // First attempt
   let response = await fetch(`${BACKEND_URL}/${path}`, {
     method,
     headers: {
@@ -55,7 +57,7 @@ async function proxyRequest(
     ...(body ? { body } : {}),
   });
 
-  // If 401, try to refresh the token
+  // Auto-refresh on 401
   if (response.status === 401 && refreshToken) {
     const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, {
       method: 'POST',
@@ -66,7 +68,7 @@ async function proxyRequest(
     if (refreshRes.ok) {
       const refreshData = await refreshRes.json();
 
-      // Retry original request with new access token
+      // Retry with new token
       accessToken = refreshData.access_token;
       response = await fetch(`${BACKEND_URL}/${path}`, {
         method,
@@ -77,22 +79,21 @@ async function proxyRequest(
         ...(body ? { body } : {}),
       });
 
-      // Forward response with updated cookies
+      // Build response with updated cookies
       const responseData = await response.text();
       const proxyResponse = new NextResponse(responseData, {
         status: response.status,
         headers: {
-          'Content-Type':
-            response.headers.get('Content-Type') || 'application/json',
+          'Content-Type': response.headers.get('Content-Type') || 'application/json',
         },
       });
 
-      // Set new cookies
+      // Rotate cookies
       proxyResponse.cookies.set('access_token', refreshData.access_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 30, // 15 minutes
+        maxAge: 60 * 30,
       });
 
       if (refreshData.refresh_token) {
@@ -100,15 +101,15 @@ async function proxyRequest(
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 7, // 7 days
+          maxAge: 60 * 60 * 24 * 7,
         });
       }
 
       return proxyResponse;
     } else {
-      // Refresh failed — clear cookies and return 401
+      // Refresh failed
       const errorResponse = NextResponse.json(
-        { detail: 'Session expired. Please log in again.' },
+        { detail: 'Session expired' },
         { status: 401 }
       );
       errorResponse.cookies.delete('access_token');
@@ -117,7 +118,7 @@ async function proxyRequest(
     }
   }
 
-  // Forward response as-is (no refresh needed)
+  // No refresh needed — forward as-is
   const responseData = await response.text();
   return new NextResponse(responseData, {
     status: response.status,
