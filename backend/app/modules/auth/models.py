@@ -12,24 +12,44 @@ class RefreshToken(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     token_jti = Column(String(255), unique=True, index=True, nullable=False)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     user_agent = Column(String(500))
     ip_address = Column(String(100))
     is_revoked = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationship back to user
     user = relationship("User", back_populates="refresh_tokens")
 
+    def is_expired(self) -> bool:
+        return datetime.now(timezone.utc) > self.expires_at
+    
+    def is_valid(self) -> bool:
+        return not self.is_expired() and not self.is_revoked
+    
+
+
 class EmailVerificationToken(Base):
     __tablename__ = "email_verification_tokens"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column( String, ForeignKey("users.id"), nullable=False)
-    token = Column(String(255), unique=True, nullable=False)
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String(255), unique=True, index=True, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
-    used = Column(Boolean, default=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+     # Relationship back to user
+    user = relationship("User", back_populates="email_verification_tokens")
+
+    def is_expired(self) -> bool:
+        return datetime.now(timezone.utc) > self.expires_at
+
+    def is_used(self) -> bool:
+        return self.used_at is not None
+
+    def is_valid(self) -> bool:
+        return not self.is_expired() and not self.is_used()
 
 
 class PasswordResetToken(Base):
@@ -48,7 +68,7 @@ class PasswordResetToken(Base):
 
     def is_expired(self) -> bool:
         """Check if the token has expired."""
-        return datetime.now(self.expires_at.tzinfo) > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def is_used(self) -> bool:
         """Check if the token has already been used."""

@@ -1,53 +1,22 @@
+# app/modules/jobs/models.py
+
 from sqlalchemy import JSON, CheckConstraint, Column, String, Integer, Boolean, DateTime, Text, func, Enum, ForeignKey, Table, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 from app.core.utils import generate_uuid
 
-import enum
-
 
 # ─── Enums ──────────────────────────────────────────────────────────
 
-class JobType(str, enum.Enum):
-    FULL_TIME = "full_time"
-    PART_TIME = "part_time"
-    CONTRACT = "contract"
-    INTERNSHIP = "internship"
-    REMOTE = "remote"
-    HYBRID = "hybrid"
-
-class ExperienceLevel(str, enum.Enum):
-    ENTRY = "entry"           # 0-2 years
-    MID = "mid"               # 2-5 years
-    SENIOR = "senior"         # 5-10 years
-    EXECUTIVE = "executive"   # 10+ years
-
-class JobStatus(str, enum.Enum):
-    DRAFT = "draft"           # Employer still editing
-    PENDING = "pending"       # Submitted, awaiting admin/moderation review
-    ACTIVE = "active"         # Live, visible to job seekers
-    PAUSED = "paused"         # Temporarily hidden by employer
-    CLOSED = "closed"         # Employer manually closed
-    EXPIRED = "expired"       # Past deadline, auto-closed
-    REJECTED = "rejected"     # Failed moderation (scam, inappropriate)
-
-class WorkplaceType(str, enum.Enum):
-    ONSITE = "onsite"
-    REMOTE = "remote"
-    HYBRID = "hybrid"
-
-class SalaryCurrency(str, enum.Enum):
-    NGN = "NGN"   # Nigerian Naira (default)
-    USD = "USD"   # For remote international roles
-
-class ApplicationStatus(str, enum.Enum):
-    PENDING = "pending"       # Submitted, not yet viewed
-    VIEWED = "viewed"         # Employer opened it
-    SHORTLISTED = "shortlisted"
-    REJECTED = "rejected"
-    HIRED = "hired"
-
+from app.core.enums import (
+    JobType,
+    ExperienceLevel,
+    JobStatus,
+    WorkplaceType,
+    SalaryCurrency,
+    ApplicationStatus
+)
 
 # ─── Association Tables ─────────────────────────────────────────────
 
@@ -143,6 +112,7 @@ class Job(Base):
     employer_profile = relationship("EmployerProfile", back_populates="jobs")
     skills = relationship("Skill", secondary=job_skills, back_populates="jobs")
     applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
+   
     
     # Indexes for common queries
     __table_args__ = (
@@ -152,6 +122,7 @@ class Job(Base):
         Index("idx_jobs_featured_active", "is_featured", "status"),
         # Composite: job type + experience for filtering
         Index("idx_jobs_type_experience", "job_type", "experience_level"),
+        Index("idx_jobs_state_lga", "state", "lga"),
         CheckConstraint(
         "salary_max IS NULL OR salary_min IS NULL OR salary_max >= salary_min",
         name="chk_job_salary_range"
@@ -244,7 +215,7 @@ class WorkExperience(Base):
     CheckConstraint(
     "(is_current = TRUE AND end_date IS NULL) OR (is_current = FALSE AND end_date IS NOT NULL AND end_date >= start_date)",
     name="chk_work_experience_current_logic"
-      )
+      ),
     )
     
 
@@ -274,6 +245,12 @@ class Education(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     job_seeker_profile = relationship("JobSeekerProfile", back_populates="educations")
+
+    __table_args__ = (
+        CheckConstraint(
+            "end_year IS NULL OR end_year >= start_year",  name="chk_education_years"
+        ),
+    )
 
 
 class JobSeekerSkill(Base):

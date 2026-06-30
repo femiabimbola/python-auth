@@ -6,27 +6,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.core.utils import generate_uuid
 
-import enum
-
-class SalaryCurrency(str, enum.Enum):
-    NGN = "NGN"   # Nigerian Naira (default)
-    USD = "USD"   # For remote international roles
-
-class UserRole(str, enum.Enum):
-    """User roles in the platform."""
-    JOB_SEEKER = "job_seeker"
-    EMPLOYER = "employer"
-    ADMIN = "admin"
-    SUPERADMIN = "superadmin"
-
-class JobType(str, enum.Enum):
-    FULL_TIME = "full_time"
-    PART_TIME = "part_time"
-    CONTRACT = "contract"
-    INTERNSHIP = "internship"
-    REMOTE = "remote"
-    HYBRID = "hybrid"
-
+from app.core.enums import UserRole, JobType, WorkplaceType, SalaryCurrency
 
 class User(Base):
     """Core user account — authentication only."""
@@ -51,6 +31,7 @@ class User(Base):
     # Auth relationships
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+    email_verification_tokens= relationship("EmailVerificationToken", back_populates="user", cascade="all, delete-orphan")
     
     # Role-specific profiles (one-to-one, only one populated based on role)
     job_seeker_profile = relationship("JobSeekerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -104,6 +85,7 @@ class JobSeekerProfile(Base):
     
     # Work preferences
     preferred_job_type = Column(Enum(JobType), nullable=True)
+    preferred_workplace_type = Column(Enum(WorkplaceType), nullable=True)  # City,
     preferred_salary_min = Column(Integer, nullable=True)         # in Kobo
     preferred_salary_max = Column(Integer, nullable=True)
     preferred_salary_currency = Column(Enum(SalaryCurrency), default=SalaryCurrency.NGN, nullable=True)
