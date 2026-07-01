@@ -84,6 +84,7 @@ export default function LoginPage() {
           },
           body: JSON.stringify(values),
           signal: controller.signal,
+          credentials: "include",
         });
 
         const data = await response

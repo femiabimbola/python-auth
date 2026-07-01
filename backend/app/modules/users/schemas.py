@@ -1,8 +1,9 @@
 # app/modules/users/schemas.py
 import re  # regular expression
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
+from app.models.user import UserRole
 
 class UserCreate(BaseModel):
     """Schema for user registration."""
@@ -63,13 +64,22 @@ class UserCreate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """Schema for user data in responses."""
-
+    """Safe user data — never expose hashed_password or tokens."""
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+    
     id: str
-    email: EmailStr
+    email: str
+    first_name: str
+    last_name: str
     full_name: str
+    role: UserRole  # Will serialize as string due to use_enum_values
+    is_verified: bool
     is_active: bool
     created_at: datetime
-
-    # Pydantic v2 configuration style for ORM/SQLAlchemy compatibility
-    model_config = {"from_attributes": True}
+    updated_at: datetime | None = None
+    
+    # Computed booleans for frontend convenience
+    is_job_seeker: bool
+    is_employer: bool
+    is_admin: bool
+    is_superadmin: bool

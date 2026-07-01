@@ -1,3 +1,5 @@
+// frontend/src/app/api/auth/login/route.ts
+
 import { NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
