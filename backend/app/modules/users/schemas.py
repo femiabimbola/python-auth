@@ -3,7 +3,7 @@ import re  # regular expression
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-from app.models.user import UserRole
+from app.modules.users.models import UserRole
 
 class UserCreate(BaseModel):
     """Schema for user registration."""

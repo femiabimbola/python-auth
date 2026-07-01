@@ -20,8 +20,8 @@ async def lifespan(app: FastAPI):
 
 # 2. Initialize the FastAPI Application
 app = FastAPI(
-    title="Auth API",
-    description="JWT Authentication API with Access & Refresh Tokens using Domain Architecture",
+    title="The Job Portal with JWT Authentication",
+    description="The Job Portal Authentication API with Access & Refresh Tokens using Domain Architecture",
     version="1.0.0",
     lifespan=lifespan, 
 )
