@@ -1,4 +1,4 @@
-// frontend/src/app/api/auth/[...path]/route.ts
+// frontend/src/app/api/[...path]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
-) {
+) { 
   return proxyRequest(request, 'GET', (await params).path);
 }
 
@@ -36,9 +36,9 @@ async function proxyRequest(
   method: string,
   pathSegments: string[]
 ) {
-  const path = pathSegments.join('/');
+  const pathname = request.nextUrl.pathname;
 
-   // Read cookies from the request (works for both client and server calls)
+  // Read cookies from the request (works for both client and server calls)
   const cookieStore = request.cookies;
   let accessToken = cookieStore.get('access_token')?.value;
   const refreshToken = cookieStore.get('refresh_token')?.value;
@@ -52,83 +52,123 @@ async function proxyRequest(
   const forwardHeaders: Record<string, string> = {
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...(body ? { 'Content-Type': 'application/json' } : {}),
+    ...(request.headers.get('x-request-id')
+      ? { 'x-request-id': request.headers.get('x-request-id')! }
+      : {}),
   };
 
-  // First attempt
-  let response = await fetch(`${BACKEND_URL}/${path}`, {
-    method,
-    headers: forwardHeaders,
-    ...(body ? { body } : {}),
-  });
+  // Add timeout to prevent hanging requests
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30 seconds
 
-  // Auto-refresh on 401
-  if (response.status === 401 && refreshToken) {
-    const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+  async function cleanup() {
+    clearTimeout(timeout);
+  }
+
+  try {
+    // First attempt using the direct pathname
+    let response = await fetch(`${BACKEND_URL}${pathname}`, {
+      method,
+      headers: forwardHeaders,
+      ...(body ? { body } : {}),
+      signal: controller.signal,
     });
+    // let response = await fetch(`${BACKEND_URL}/${path}`, {
+    //   method,
+    //   headers: forwardHeaders,
+    //   ...(body ? { body } : {}),
+    //   signal: controller.signal,
+    // });
 
-    if (refreshRes.ok) {
-      const refreshData = await refreshRes.json();
-
-      // Retry original request with new access token
-      response = await fetch(`${BACKEND_URL}/${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${refreshData.access_token}`,
-          ...(body ? { 'Content-Type': 'application/json' } : {}),
-        },
-        ...(body ? { body } : {}),
+    // Auto-refresh on 401
+    if (response.status === 401 && refreshToken) {
+      const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+        signal: controller.signal,
       });
 
-      // Build final response with rotated cookies
-      const responseData = await response.text();
-      const proxyResponse = new NextResponse(responseData, {
-        status: response.status,
-        headers: {
-          'Content-Type':
-            response.headers.get('Content-Type') || 'application/json',
-        },
-      });
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
 
-      // Rotate both tokens
-      proxyResponse.cookies.set('access_token', refreshData.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 15, // 15 minutes
-      });
+        // Retry original request with new access token
+        // response = await fetch(`${BACKEND_URL}/${path}`, {
 
-      if (refreshData.refresh_token) {
-        proxyResponse.cookies.set('refresh_token', refreshData.refresh_token, {
+        response = await fetch(`${BACKEND_URL}${pathname}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${refreshData.access_token}`,
+            ...(body ? { 'Content-Type': 'application/json' } : {}),
+          },
+          ...(body ? { body } : {}),
+          signal: controller.signal,
+        });
+
+        // Build final response with rotated cookies
+        const responseData = await response.text();
+        const proxyResponse = new NextResponse(responseData, {
+          status: response.status,
+          headers: {
+            'Content-Type':
+              response.headers.get('Content-Type') || 'application/json',
+          },
+        });
+
+        // Rotate access token
+        proxyResponse.cookies.set('access_token', refreshData.access_token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 7, // 7 days
+          maxAge: 60 * 15, // 15 minutes
         });
+
+        // Rotate refresh token if a new one was issued
+        if (refreshData.refresh_token) {
+          proxyResponse.cookies.set('refresh_token', refreshData.refresh_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+          });
+        }
+
+        await cleanup();
+        return proxyResponse;
+      } else {
+        // Refresh failed — clear cookies and return 401
+        const errorResponse = NextResponse.json(
+          { detail: 'Session expired. Please log in again.' },
+          { status: 401 }
+        );
+        errorResponse.cookies.delete('access_token');
+        errorResponse.cookies.delete('refresh_token');
+        await cleanup();
+        return errorResponse;
       }
-
-      return proxyResponse;
-    } else {
-      // Refresh failed — clear cookies and return 401
-      const errorResponse = NextResponse.json(
-        { detail: 'Session expired. Please log in again.' },
-        { status: 401 }
-      );
-      errorResponse.cookies.delete('access_token');
-      errorResponse.cookies.delete('refresh_token');
-      return errorResponse;
     }
-  }
 
-  // No refresh needed — forward response as-is
-  const responseData = await response.text();
-  return new NextResponse(responseData, {
-    status: response.status,
-    headers: {
-      'Content-Type':
-        response.headers.get('Content-Type') || 'application/json',
-    },
-  });
+    // No refresh needed — forward response as-is
+    const responseData = await response.text();
+    await cleanup();
+    return new NextResponse(responseData, {
+      status: response.status,
+      headers: {
+        'Content-Type':
+          response.headers.get('Content-Type') || 'application/json',
+      },
+    });
+  } catch (err) {
+    await cleanup();
+
+    if (err instanceof Error && err.name === 'AbortError') {
+      return NextResponse.json(
+        { detail: 'Request timeout. Backend did not respond in time.' },
+        { status: 504 }
+      );
+    }
+
+    // Re-throw unexpected errors to let Next.js handle them
+    throw err;
+  }
 }

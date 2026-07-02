@@ -3,26 +3,57 @@
 
 import { useEffect, useState } from 'react';
 
+interface User {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  role: string;
+  is_verified: boolean;
+  is_active: boolean;
+}
+
 export default function DashboardPage() {
-  const [data, setData] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Call THROUGH the proxy, not directly to backend
-    fetch('/api/auth/users/me', {
+    fetch('/api/users/me', { 
       method: 'GET',
-      credentials: 'include', // Important: sends cookies
+      credentials: 'include',
     })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch');
+      .then(async (res) => {
+        if (res.status === 401) {
+          throw new Error('Session expired. Please log in again.');
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Request failed: ${res.status}`);
+        }
         return res.json();
       })
-      .then((data) => setData(data))
+      .then((data: User) => setUser(data))
       .catch((err) => {
-        console.error(err);
-        // Proxy handles 401 refresh automatically
-        // If refresh fails, proxy returns 401 and clears cookies
-      });
+        console.error('Dashboard load failed:', err);
+        setError(err.message);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  return <div>{data ? JSON.stringify(data) : 'Loading...'}</div>;
+  if (loading) return <div className="p-8">Loading...</div>;
+  if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
+  if (!user) return <div className="p-8">No user data</div>;
+
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Welcome, {user.full_name}</h1>
+      <div className="space-y-2">
+        <p><strong>Email:</strong> {user.email}</p>
+        <p><strong>Role:</strong> {user.role}</p>
+        <p><strong>Verified:</strong> {user.is_verified ? 'Yes' : 'No'}</p>
+      </div>
+    </div>
+  );
 }

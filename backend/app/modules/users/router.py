@@ -13,7 +13,6 @@ def read_current_user(
     current_user: User = Depends(get_current_active_verified_user),
 ):
     """
-    Get current authenticated user's information.
     Requires valid access token + verified email.
     """
     return current_user
