@@ -1,12 +1,16 @@
-// proxy.ts
+// frontend/src/proxy.ts
+
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function proxy(request: NextRequest) {
-  const token = request.cookies.get('refresh_token')?.value
-  const isProtected = request.nextUrl.pathname.startsWith('/dashboard')
+  const token = request.cookies.get('access_token')?.value
+  const pathname = request.nextUrl.pathname
 
-  console.log('Proxy hit:', request.nextUrl.pathname, 'Token:', !!token)
+  // Check if the current path matches any of your protected routes
+  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/profile')
+
+  console.log('Proxy hit:', pathname, 'Token:', !!token)
 
   if (isProtected && !token) {
     return NextResponse.redirect(new URL('/login', request.url))
@@ -15,6 +19,7 @@ export function proxy(request: NextRequest) {
   return NextResponse.next()
 }
 
+// The config matcher itself is structurally fine, just ensure it matches your logic
 export const config = {
-  matcher: ['/dashboard/:path*, /profile/:path*', ],
+  matcher: ['/dashboard/:path*', '/profile/:path*'],
 }
