@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
+// Helper function to resolve the dynamic path segments asynchronously
 async function extractPath(params: Promise<{ path: string[] }>) {
   return (await params).path;
 }
@@ -45,11 +46,12 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
   const searchParams = request.nextUrl.search;
   const targetUrl = `${BACKEND_URL}${backendPath}${searchParams}`;
 
+  // Read cookies from incoming frontend request
   const cookieStore = request.cookies;
   let accessToken = cookieStore.get('access_token')?.value;
   const refreshToken = cookieStore.get('refresh_token')?.value;
 
-  // 2. Clone incoming headers and balance the Host header
+  // 2. Clone incoming headers and balance the Host header to prevent CORS/Host mismatches
   const forwardHeaders = new Headers(request.headers);
   forwardHeaders.set('host', new URL(BACKEND_URL).host);
   if (accessToken) {
@@ -62,8 +64,9 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
     body = await request.arrayBuffer();
   }
 
+  // Enforce a strict gateway timeout for downstream microservices
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000); // 30-second gateway timeout
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
     let response = await fetch(targetUrl, {
@@ -73,9 +76,8 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
       signal: controller.signal,
     });
 
-    // 4. Handle token refresh if backend returns an authorized status
+    // 4. Handle token refresh automatically if backend returns a 401 Unauthorized status
     if (response.status === 401 && refreshToken) {
-      // Matches your exact FastAPI Router setup: prefix="/api/auth" + "/refresh"
       const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,10 +88,8 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
         
-        // Re-assign fresh authorization header
+        // Retry original target request with the fresh token
         forwardHeaders.set('Authorization', `Bearer ${refreshData.access_token}`);
-
-        // Retry original request
         response = await fetch(targetUrl, {
           method,
           headers: forwardHeaders,
@@ -97,13 +97,12 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
           signal: controller.signal,
         });
 
-        // Strip troublesome hop-by-hop tracking headers
+        // Strip hop-by-hop HTTP headers before forwarding back to client
         const cleanHeaders = new Headers(response.headers);
         cleanHeaders.delete('connection');
         cleanHeaders.delete('keep-alive');
         cleanHeaders.delete('transfer-encoding');
 
-        // Stream downstream response body back to user agent
         const proxyResponse = new NextResponse(response.body, {
           status: response.status,
           headers: cleanHeaders,
@@ -111,6 +110,7 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
 
         const isProd = process.env.NODE_ENV === 'production';
 
+        // Persist newly rotated tokens in secure HttpOnly cookies
         proxyResponse.cookies.set('access_token', refreshData.access_token, {
           httpOnly: true,
           secure: isProd,
@@ -118,7 +118,6 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
           maxAge: 60 * 15, // 15 minutes
         });
 
-        // Sets rotated refresh token if issued by the service workflow
         if (refreshData.refresh_token) {
           proxyResponse.cookies.set('refresh_token', refreshData.refresh_token, {
             httpOnly: true,
@@ -131,7 +130,7 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
         clearTimeout(timeout);
         return proxyResponse;
       } else {
-        // Drop bad/expired session tokens explicitly
+        // Clear expired credentials explicitly if refresh request fails
         const errorResponse = NextResponse.json(
           { detail: 'Session expired. Please log in again.' },
           { status: 401 }
@@ -143,13 +142,53 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
       }
     }
 
-    // Clean up response headers for direct proxy flow
+    // Clean up proxy tracking and transport headers
     const cleanHeaders = new Headers(response.headers);
     cleanHeaders.delete('connection');
     cleanHeaders.delete('keep-alive');
     cleanHeaders.delete('transfer-encoding');
 
     clearTimeout(timeout);
+
+    // Intercept successful logins to extract response data and set browser cookies
+    const isLoginPath = pathSegments.join('/') === 'auth/login';
+    if (response.ok && isLoginPath) {
+      const responseClone = response.clone();
+      try {
+        const loginData = await responseClone.json();
+        const proxyResponse = new NextResponse(response.body, {
+          status: response.status,
+          headers: cleanHeaders,
+        });
+
+        const isProd = process.env.NODE_ENV === 'production';
+
+        // Set access and refresh tokens as HttpOnly cookies for subsequent requests/middleware
+        if (loginData.access_token) {
+          proxyResponse.cookies.set('access_token', loginData.access_token, {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: 'lax',
+            maxAge: 15 * 60,
+          });
+        }
+
+        if (loginData.refresh_token) {
+          proxyResponse.cookies.set('refresh_token', loginData.refresh_token, {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60,
+          });
+        }
+
+        return proxyResponse;
+      } catch (e) {
+        console.error("Failed to inject login cookies in proxy:", e);
+      }
+    }
+
+    // Return direct stream back to user agent for ordinary proxy paths
     return new NextResponse(response.body, {
       status: response.status,
       headers: cleanHeaders,
