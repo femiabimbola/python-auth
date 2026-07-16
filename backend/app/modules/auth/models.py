@@ -12,8 +12,8 @@ class RefreshToken(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     token_jti = Column(String(255), unique=True, index=True, nullable=False)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), index=True, nullable=False)
     user_agent = Column(String(500))
     ip_address = Column(String(100))
     is_revoked = Column(Boolean, default=False)

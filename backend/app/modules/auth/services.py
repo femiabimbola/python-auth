@@ -5,7 +5,7 @@ import uuid
 
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status, BackgroundTasks
-from sqlalchemy import select, update, delete
+from sqlalchemy import func, select, update, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -24,6 +24,7 @@ from app.modules.users.schemas import UserCreate
 from datetime import datetime, timedelta, timezone
 from app.services.email import send_verification_email, send_password_reset_email
 from app.modules.users.models import User
+from app.core.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +212,18 @@ def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str
     return access_token, refresh_token_str
 
 
+def delete_expired_refresh_tokens(db: Session, user_id: str = None) -> int:
+    """Removes expired refresh tokens from the database. """
+    query = delete(RefreshToken).where(RefreshToken.expires_at < func.now())
+    
+    if user_id:
+        query = query.where(RefreshToken.user_id == user_id)
+        
+    result = db.execute(query)
+    db.commit()
+    return result.rowcount
+
+
 def rotate_refresh_token_workflow(db: Session, request: RefreshRequest) -> tuple[str, str]:
     """Validates refresh token states, enforcing safety checks against theft/reuse."""
     payload = verify_token(request.refresh_token, expected_type="refresh")
@@ -259,6 +272,9 @@ def rotate_refresh_token_workflow(db: Session, request: RefreshRequest) -> tuple
     # Build replacements
     new_access_token = create_access_token(user_id)
     new_refresh_str, new_jti, new_expires = create_refresh_token(user_id)
+
+    # Clean up this specific user's expired tokens before issuing a new one
+    delete_expired_refresh_tokens(db, user_id=user_id)
 
     new_db_token = RefreshToken(
         token_jti=new_jti, user_id=user_id, expires_at=new_expires
@@ -407,3 +423,19 @@ def change_password_workflow(db: Session, token: str, new_password: str) -> dict
     logger.info(f"Password reset completed for user_id: {user.id}")
 
     return {"message": "Password has been reset successfully"}
+
+
+def run_daily_cleanup():
+    """Independent database worker for cleaning up expired tokens.
+    Designed to be called by the background scheduler.
+    """
+    db = SessionLocal()
+    try:
+        print("[Cron Job] Starting expired token cleanup...")
+        # delete_expired_refresh_tokens is already in this file
+        deleted_count = delete_expired_refresh_tokens(db) 
+        print(f"[Cron Job] Successfully purged {deleted_count} expired refresh tokens.")
+    except Exception as e:
+        print(f"[Cron Job Error] Failed to purge tokens: {e}")
+    finally:
+        db.close()

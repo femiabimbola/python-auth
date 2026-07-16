@@ -1,20 +1,34 @@
 # app/main.py
 from contextlib import asynccontextmanager
+from sched import scheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.core.config import settings
 from app.core.database import create_tables
 from app.modules.auth.router import router as auth_router
 from app.modules.users.router import router as users_router
+from app.modules.auth.services import run_daily_cleanup
 
 
 # 1. Define the Lifespan Context Manager (Modern Startup/Shutdown Handling)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_tables()
+
+    # Initialize and configure the background scheduler
+    scheduler = BackgroundScheduler()
+
+    # Schedule the cleanup job to run every day at 3:00 AM
+    # scheduler.add_job(run_daily_cleanup, 'cron', hour=3, minute=0)
+    
+    scheduler.add_job(run_daily_cleanup, 'interval', days=5)
+
+    scheduler.start()
     yield  # The application serves requests while yielding control here
-    # Actions on Shutdown (e.g., closing redis pools, cleaning up microservice connections)
+    scheduler.shutdown()
+    print("[Lifecycle] Background scheduler shut down safely.")
     pass
 
 
