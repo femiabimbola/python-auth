@@ -1,3 +1,5 @@
+// frontend/src/app/%28dashboard%29/settings/components/danger-zone.tsx
+
 'use client';
 
 import { useActionState } from 'react';

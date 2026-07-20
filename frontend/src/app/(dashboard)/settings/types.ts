@@ -1,3 +1,5 @@
+// frontend/src/app/%28dashboard%29/settings/types.ts
+
 export interface UserData {
   id: string;
   email: string;
@@ -11,3 +13,8 @@ export interface UserData {
   created_at?: string;
   two_factor_enabled?: boolean;
 }
+
+
+export type GetUserResult =
+  | { success: true; data: UserData }
+  | { success: false; error: 'unauthorized' | 'network' | 'parse' | 'unknown'; message: string };

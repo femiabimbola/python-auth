@@ -1,3 +1,5 @@
+// frontend/src/app/%28dashboard%29/settings/components/appearance-section.tsx
+
 'use client';
 
 import { useState } from 'react';

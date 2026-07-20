@@ -1,3 +1,5 @@
+// frontend/src/app/%28dashboard%29/settings/components/profile-section.tsx
+
 'use client';
 
 import { useActionState } from 'react';

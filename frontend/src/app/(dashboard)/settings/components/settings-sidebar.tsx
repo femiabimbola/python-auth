@@ -1,3 +1,5 @@
+// frontend/src/app/%28dashboard%29/settings/components/settings-sidebar.tsx
+
 import {
   User,
   Shield,
