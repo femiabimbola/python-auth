@@ -53,8 +53,8 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(request: RefreshRequest, db: Session = Depends(get_db)):
     """Refresh token pairs using valid, rotated refresh tokens."""
-    access_token, refresh_token = services.rotate_refresh_token_workflow(db, request)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    access_token, refresh_token, has_profile = services.rotate_refresh_token_workflow(db, request)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, has_profile=has_profile)
 
 
 @router.post("/logout", response_model=MessageResponse)

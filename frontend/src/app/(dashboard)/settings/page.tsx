@@ -1,8 +1,9 @@
 // frontend/src/app/(dashboard)/settings/page.tsx
 
 import { redirect } from 'next/navigation';
-import {  GetUserResult } from './types';
+import { GetUserResult } from './types';
 import { SettingsSidebar } from './components/settings-sidebar';
+import { SettingsTabs } from './components/settings-tabs';
 import { ProfileSection } from './components/profile-section';
 import { SecuritySection } from './components/security-section';
 import { NotificationsSection } from './components/notifications-section';
@@ -74,14 +75,20 @@ export default async function SettingsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* TypeScript is happy now because `user` is explicitly `UserData` */}
+          {/* Sidebar now just shows the profile card + security summary;
+              section navigation is handled by the horizontal tabs. */}
           <SettingsSidebar user={user} />
 
           <div className="lg:col-span-9 space-y-6">
-            <ProfileSection user={user} />
-            <SecuritySection user={user} />
-            <NotificationsSection />
-            <AppearanceSection />
+            {/* IMPORTANT: children order must match the TABS order inside
+                SettingsTabs: Profile, Security, Notifications, Appearance */}
+            <SettingsTabs>
+              <ProfileSection user={user} />
+              <SecuritySection user={user} />
+              <NotificationsSection />
+              <AppearanceSection />
+            </SettingsTabs>
+
             <DangerZone />
           </div>
         </div>

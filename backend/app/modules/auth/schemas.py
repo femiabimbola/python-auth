@@ -22,6 +22,7 @@ class TokenResponse(BaseModel):
     """Schema for token pair response."""
     access_token: str
     refresh_token: str
+    has_profile: bool
     token_type: str = "bearer"
 
 

@@ -200,6 +200,15 @@ def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str
             detail="Email is not verified. Please check your inbox or request a new verification link.",
         )
 
+    has_profile = False
+
+    if user.is_job_seeker:
+        has_profile = user.job_seeker_profile is not None
+    elif user.is_employer:
+        has_profile = user.employer_profile is not None
+    elif user.is_admin or user.is_superadmin:
+        has_profile = True  # Admins typically don't have onboarding profiles
+
     access_token = create_access_token(user.id)
     refresh_token_str, jti, expires_at = create_refresh_token(user.id)
 
@@ -209,7 +218,7 @@ def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str
     db.add(db_refresh_token)
     db.commit()
 
-    return access_token, refresh_token_str
+    return access_token, refresh_token_str, user.role.value, has_profile
 
 
 def delete_expired_refresh_tokens(db: Session, user_id: str = None) -> int:

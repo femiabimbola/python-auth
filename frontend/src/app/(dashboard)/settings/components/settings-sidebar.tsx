@@ -1,11 +1,7 @@
-// frontend/src/app/%28dashboard%29/settings/components/settings-sidebar.tsx
+// frontend/src/app/(dashboard)/settings/components/settings-sidebar.tsx
 
 import {
-  User,
   Shield,
-  Bell,
-  Palette,
-  ChevronRight,
   CheckCircle2,
   AlertCircle,
   Camera,
@@ -24,13 +20,6 @@ function formatDate(dateString?: string) {
     day: 'numeric',
   });
 }
-
-const navItems = [
-  { id: 'profile', label: 'Profile', icon: User, desc: 'Personal information' },
-  { id: 'security', label: 'Security', icon: Shield, desc: 'Password & 2FA' },
-  { id: 'notifications', label: 'Notifications', icon: Bell, desc: 'Email & push alerts' },
-  { id: 'appearance', label: 'Appearance', icon: Palette, desc: 'Theme & display' },
-];
 
 export function SettingsSidebar({ user }: { user: UserData }) {
   return (
@@ -83,28 +72,6 @@ export function SettingsSidebar({ user }: { user: UserData }) {
           Member since {formatDate(user.created_at)}
         </div>
       </div>
-
-      {/* Quick Navigation */}
-      <nav className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        {navItems.map((item, idx) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            className={`flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors group ${
-              idx !== navItems.length - 1 ? 'border-b border-slate-100' : ''
-            }`}
-          >
-            <div className="p-2 rounded-lg bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-              <item.icon className="w-4 h-4" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-slate-900">{item.label}</p>
-              <p className="text-xs text-slate-500">{item.desc}</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500" />
-          </a>
-        ))}
-      </nav>
 
       {/* Account Security */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
