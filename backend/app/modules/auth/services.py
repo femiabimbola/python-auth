@@ -175,7 +175,7 @@ def verify_user_email_workflow(db: Session, token: str) -> dict:
     return {"message": "Email verified successfully! Your account is active and you can now log in."}
 
 
-def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str, str]:
+def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str, str, str, bool]:
     """Verifies profile status and issues fresh credentials."""
     user = db.execute(
         select(User).where(User.email == credentials.email)

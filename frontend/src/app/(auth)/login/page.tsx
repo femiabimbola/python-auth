@@ -33,6 +33,9 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 interface LoginSuccessResponse {
   access_token: string;
   refresh_token: string;
+  role: string;        // "job_seeker" | "employer" | "admin" | "superadmin"
+  has_profile: boolean;
+  token_type: string;
 }
 
 interface ValidationErrorDetail {
@@ -79,9 +82,7 @@ export default function LoginPage() {
       try {
         const response = await fetch("/api/auth/login", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(values),
           signal: controller.signal,
           credentials: "include",
@@ -110,6 +111,20 @@ export default function LoginPage() {
               : data.message || "Invalid email or password.";
           throw new Error(errorMessage);
         }
+
+        const { has_profile, role } = data;
+
+      if (!has_profile) {
+        // Redirect to role-specific onboarding
+        if (role === "job_seeker") {
+          router.push("/onboarding/job-seeker");
+        } else if (role === "employer") {
+          router.push("/onboarding/employer");
+        } else {
+          router.push("/dashboard");
+        }
+        return;
+      }
 
         router.push("/dashboard");
       } catch (error) {

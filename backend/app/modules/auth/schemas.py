@@ -23,6 +23,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     has_profile: bool
+    role: str
     token_type: str = "bearer"
 
 

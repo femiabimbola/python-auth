@@ -46,8 +46,8 @@ def verify_email(token: str =  Query(..., description="Email Verification token"
 @router.post("/login", response_model=TokenResponse)
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """Authenticate user and return token pair."""
-    access_token, refresh_token = services.authenticate_user_workflow(db, credentials)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    access_token, refresh_token, role, has_profile = services.authenticate_user_workflow(db, credentials)
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, role=role, has_profile=has_profile, token_type="bearer",)
 
 
 @router.post("/refresh", response_model=TokenResponse)
