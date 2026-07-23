@@ -13,7 +13,13 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 
-import { JobSeekerFormData, jobSeekerSchema, stepSchemas, stepNames, SalaryCurrency } from "./../schema";
+import { 
+  JobSeekerFormData, 
+  jobSeekerSchema, 
+  stepSchemas, 
+  stepNames, 
+  SalaryCurrency 
+} from "../schema";
 import { StepIndicator } from "./step-indicator";
 import { StepContact } from "./steps/step-contact";
 import { StepProfessional } from "./steps/step-professional";
@@ -54,7 +60,7 @@ export function JobSeekerForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const form = useForm<JobSeekerFormData>({
+  const form = useForm({
     resolver: zodResolver(jobSeekerSchema),
     defaultValues,
     mode: "onChange",
@@ -65,13 +71,24 @@ export function JobSeekerForm() {
   const isFirstStep = currentStep === 0;
 
   const validateCurrentStep = useCallback(async () => {
+    // Prevent index out of bounds on the final "Review" step
+    if (currentStep >= stepSchemas.length) {
+      return true;
+    }
+
     const currentSchema = stepSchemas[currentStep];
-    const fields = Object.keys(currentSchema.shape) as Array<keyof JobSeekerFormData>;
+    
+    // Extract inner schema shape safely even if wrapped in .refine() (ZodEffects)
+    const shape = "shape" in currentSchema 
+      ? currentSchema.shape 
+      : (currentSchema as any)._def.schema.shape;
+
+    const fields = Object.keys(shape) as Array<keyof JobSeekerFormData>;
     const result = await form.trigger(fields);
     return result;
   }, [currentStep, form]);
 
-  const handleNext = useCallback(async () => {
+  const handleNext = useCallback(async () => { 
     if (isLastStep) return;
 
     const isValid = await validateCurrentStep();
@@ -90,6 +107,13 @@ export function JobSeekerForm() {
 
   const handleSubmit = useCallback(
     async (data: JobSeekerFormData) => {
+      // Re-validate full schema prior to network submit
+      const isFormValid = await form.trigger();
+      if (!isFormValid) {
+        toast.error("Validation failed. Please review all steps.");
+        return;
+      }
+
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
