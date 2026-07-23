@@ -2,14 +2,17 @@
 from fastapi import APIRouter, Depends,  status
 
 from app.core.dependencies import get_current_user, get_current_active_verified_user  
-from app.modules.users.models import User          
-from app.modules.users.dependencies import require_job_seeker, require_admin
-from app.modules.users.schemas import UserResponse, JobSeekerProfileResponse, JobSeekerProfileCreate   
 from sqlalchemy.orm import Session
 from app.modules.users import services 
 from app.core.exceptions import NotFoundException
+from app.core.database import get_db
 
-from backend.app.core.database import get_db
+from app.modules.users.models import User          
+from app.modules.users.dependencies import require_job_seeker, require_admin
+from app.modules.users.schemas import UserResponse, JobSeekerProfileResponse, JobSeekerProfileCreate   
+from app.modules.users.services import create_job_seeker_profile, get_job_seeker_profile_by_user_id    
+
+
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -36,7 +39,7 @@ def read_user_status(
     return current_user
 
 
-@router.post("/job-seeker-profile", response_model=JobSeekerProfileResponse,
+@router.post("/job-seeker/profile", response_model=JobSeekerProfileResponse,
     status_code=status.HTTP_201_CREATED, summary="Create job seeker profile",
     description="Create a new job seeker profile for the authenticated user. Only available to users with JOB_SEEKER role.")
 def create_job_seeker_profile(
@@ -54,7 +57,7 @@ def create_job_seeker_profile(
     )
 
 
-@router.get("/job-seeker-profile",response_model=JobSeekerProfileResponse,
+@router.get("/job-seeker/profile",response_model=JobSeekerProfileResponse,
     summary="Get my job seeker profile",
     description="Retrieve the authenticated user's job seeker profile."
 )
@@ -65,7 +68,7 @@ def get_my_job_seeker_profile(
     """
     Get the current user's job seeker profile.
     """
-    profile = services.get_profile_by_user_id(current_user.id)
+    profile = services.get_job_seeker_profile_by_user_id(db=db, user_id=current_user.id)
     if not profile:
         raise NotFoundException("Job seeker profile not found")
     return profile

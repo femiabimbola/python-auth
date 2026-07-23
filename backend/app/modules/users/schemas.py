@@ -1,11 +1,11 @@
 # app/modules/users/schemas.py
 import re  # regular expression
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional, Self
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.modules.users.models import UserRole
-from backend.app.core.enums import JobType, SalaryCurrency, WorkplaceType
+from app.core.enums import JobType, SalaryCurrency, WorkplaceType
 
 class UserCreate(BaseModel):
     """Schema for user registration."""
@@ -106,6 +106,16 @@ class JobSeekerProfileBase(BaseModel):
     profile_image_url: Optional[str] = None
     is_profile_public: bool = True
 
+    @model_validator(mode="after")
+    def validate_salary_range(self) -> Self:
+        if (
+            self.preferred_salary_min is not None
+            and self.preferred_salary_max is not None
+            and self.preferred_salary_min > self.preferred_salary_max
+        ):
+            raise ValueError("Minimum salary cannot be greater than maximum salary")
+        return self
+
 
 class JobSeekerProfileCreate(JobSeekerProfileBase):
     """Schema for creating a new job seeker profile."""
@@ -123,6 +133,50 @@ class JobSeekerProfileResponse(JobSeekerProfileBase):
     # Nested user info (optional, included when needed)
     user: Optional[UserResponse] = None
 
+
+class JobSeekerProfileListParams(BaseModel):
+    """Query parameters for listing/searching job seeker profiles."""
+    country: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    preferred_job_type: Optional[JobType] = None
+    preferred_workplace_type: Optional[WorkplaceType] = None
+    is_open_to_remote: Optional[bool] = None
+    min_years_experience: Optional[int] = Field(None, ge=0)
+    max_years_experience: Optional[int] = Field(None, ge=0)
+    is_profile_public: Optional[bool] = True
+    search: Optional[str] = None  # Search in headline, summary
+    page: int = Field(1, ge=1)
+    page_size: int = Field(20, ge=1, le=100)
+
+
+class PaginatedResponse(BaseModel):
+    """Generic paginated response wrapper."""
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    items: List[JobSeekerProfileResponse]
+
+class JobSeekerProfileUpdate(BaseModel):
+    """Schema for updating an existing job seeker profile — all fields optional."""
+    phone_number: Optional[str] = Field(None, max_length=30)
+    country: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    city: Optional[str] = Field(None, max_length=100)
+    headline: Optional[str] = Field(None, max_length=200)
+    summary: Optional[str] = Field(None, max_length=2000)
+    years_of_experience: Optional[int] = Field(None, ge=0, le=50)
+    preferred_job_type: Optional[JobType] = None
+    preferred_workplace_type: Optional[WorkplaceType] = None
+    preferred_salary_min: Optional[int] = Field(None, ge=0)
+    preferred_salary_max: Optional[int] = Field(None, ge=0)
+    preferred_salary_currency: Optional[SalaryCurrency] = None
+    is_open_to_remote: Optional[bool] = None
+    is_open_to_relocation: Optional[bool] = None
+    resume_url: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    is_profile_public: Optional[bool] = None
 
 class EmployerProfileBase(BaseModel):
     company_name: str = Field(..., max_length=200)
