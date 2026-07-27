@@ -1,6 +1,6 @@
 
 import { JobSeekerForm } from "./components/job-seeker-form";
-// import { Toaster } from "@/components/ui/sonner";
+// import { Toaster } from "@/components/ui/toast"
 
 
 export default function Home() {

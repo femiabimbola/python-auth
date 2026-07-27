@@ -56,6 +56,7 @@ const defaultValues: JobSeekerFormData = {
 };
 
 export function JobSeekerForm() {
+  
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -120,12 +121,33 @@ export function JobSeekerForm() {
 
       setIsSubmitting(true);
 
+      const payload = {
+      ...data,
+      // 1. Convert uppercase enums ("PART_TIME", "HYBRID") to lowercase ("part_time", "hybrid")
+      preferred_job_type: data.preferred_job_type 
+        ? data.preferred_job_type.toLowerCase() 
+        : null,
+      preferred_workplace_type: data.preferred_workplace_type 
+        ? data.preferred_workplace_type.toLowerCase() 
+        : null,
+
+      // 2. Convert empty strings to null (or fallback strings if backend strictly requires str)
+      summary: data.summary?.trim() || null,
+      resume_url: data.resume_url?.trim() || null,
+      profile_image_url: data.profile_image_url?.trim() || null,
+
+      // 3. Ensure numeric fields pass valid numbers or null (depending on backend setup)
+      years_of_experience: data.years_of_experience ?? null,
+      preferred_salary_min: data.preferred_salary_min ?? 0,
+      preferred_salary_max: data.preferred_salary_max ?? 0,
+    };
+
       try {
-        console.log(data)
+        console.log("Sending payload:", payload);
         const response = await fetch("/api/users/job-seeker/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify(payload),
           signal: controller.signal,
           credentials: "include",
         });

@@ -66,7 +66,7 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
 
   // Enforce a strict gateway timeout for downstream microservices
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
     let response = await fetch(targetUrl, {
@@ -76,6 +76,7 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
       signal: controller.signal,
     });
 
+    console.log("Original request status:", response.status);
     // 4. Handle token refresh automatically if backend returns a 401 Unauthorized status
     if (response.status === 401 && refreshToken) {
       const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, { 
@@ -85,9 +86,13 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
         signal: controller.signal,
       });
 
+      console.log("Refresh request status:", refreshRes);
+
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
         
+        console.log("Refreshing access token...");
+        console.log("Refresh token exists:", !!refreshToken);
         // Retry original target request with the fresh token
         forwardHeaders.set('Authorization', `Bearer ${refreshData.access_token}`);
         response = await fetch(targetUrl, {
@@ -115,7 +120,7 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
           httpOnly: true,
           secure: isProd,
           sameSite: 'lax',
-          maxAge: 60 * 15, // 15 minutes
+          maxAge: 60 * 3, // 15 minutes
         });
 
         if (refreshData.refresh_token) {
