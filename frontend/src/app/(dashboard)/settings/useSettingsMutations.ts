@@ -4,7 +4,7 @@
 
 import useSWRMutation from "swr/mutation";
 import { useSWRConfig } from "swr";
-import { mutationFetcher } from "@/lib/swr-fetcher";
+import { mutationFetcher } from "@/lib/mutation-fetcher";
 
 export function useSettingsMutations() {
   const { mutate } = useSWRConfig();

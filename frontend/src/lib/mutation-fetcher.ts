@@ -1,4 +1,4 @@
-// frontend/src/lib/swr-fetcher.ts
+// frontend/src/lib/mutation-fetcher.ts
 
 import { ApiError } from "./api-error";
 
