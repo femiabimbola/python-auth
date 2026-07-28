@@ -24,9 +24,7 @@ export default function RootLayout({
 
           {/* Main Column */}
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {/* Topbar */}
             <Topbar />
-
             <main className="flex-1 overflow-y-auto">{children}</main>
 
             <Footer />

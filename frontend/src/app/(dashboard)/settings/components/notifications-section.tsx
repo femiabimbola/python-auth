@@ -1,10 +1,23 @@
+// frontend/src/app/(dashboard)/settings/components/notifications-section.tsx
+
 'use client';
 
-import { useActionState } from 'react';
-import { Bell } from 'lucide-react';
-import { updateNotifications } from '../actions';
-import { SubmitButton } from './submit-button';
-import { FormMessage } from './form-message';
+import { useState } from 'react';
+import { Bell, Loader2 } from 'lucide-react';
+import { useSettingsMutations } from '../useSettingsMutations';
+
+
+interface NotificationPreferences {
+  email_marketing?: boolean;
+  email_security?: boolean;
+  email_updates?: boolean;
+  push_enabled?: boolean;
+}
+
+interface FormState {
+  success: boolean;
+  message: string;
+}
 
 const items = [
   {
@@ -33,11 +46,23 @@ const items = [
   },
 ];
 
-export function NotificationsSection() {
-  const [state, formAction] = useActionState(
-    async (_prevState: unknown, formData: FormData) => updateNotifications(formData),
-    null
-  );
+export function NotificationsSection({
+  userNotifications,
+}: {
+  userNotifications?: NotificationPreferences;
+}) {
+  const { updateNotifications, isUpdatingNotifications } = useSettingsMutations();
+  const [state, setState] = useState<FormState | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setState(null);
+
+    const formData = new FormData(e.currentTarget);
+    const result = await updateNotifications(formData);
+
+    setState(result);
+  };
 
   return (
     <section
@@ -54,7 +79,7 @@ export function NotificationsSection() {
         </div>
       </div>
 
-      <form action={formAction} className="p-6">
+      <form onSubmit={handleSubmit} className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {items.map((item) => (
             <label
@@ -65,7 +90,10 @@ export function NotificationsSection() {
                 <input
                   type="checkbox"
                   name={item.id}
-                  defaultChecked={item.defaultChecked}
+                  defaultChecked={
+                    userNotifications?.[item.id as keyof NotificationPreferences] ??
+                    item.defaultChecked
+                  }
                   className="peer h-5 w-5 rounded-md border-2 border-slate-300 text-amber-600 
                     focus:ring-amber-500/20 focus:ring-offset-0 
                     checked:border-amber-500 checked:bg-amber-500
@@ -82,11 +110,31 @@ export function NotificationsSection() {
           ))}
         </div>
 
-        <div className="flex justify-end mt-6 pt-4 border-t border-slate-100 gap-3">
-          <FormMessage state={state} />
-          <SubmitButton className="text-white bg-amber-600 hover:bg-amber-700 shadow-sm shadow-amber-600/10">
-            Save Preferences
-          </SubmitButton>
+        <div className="flex items-center justify-end mt-6 pt-4 border-t border-slate-100 gap-3">
+          {state && (
+            <p
+              className={`text-sm ${
+                state.success ? 'text-emerald-600' : 'text-rose-600'
+              }`}
+            >
+              {state.message}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isUpdatingNotifications}
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-amber-600/10 transition-all"
+          >
+            {isUpdatingNotifications ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Preferences'
+            )}
+          </button>
         </div>
       </form>
     </section>

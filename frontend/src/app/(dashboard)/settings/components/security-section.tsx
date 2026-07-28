@@ -1,6 +1,8 @@
+// frontend/src/app/(dashboard)/settings/components/security-section.tsx
 'use client';
 
-import { useActionState } from 'react';
+import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   KeyRound,
   Fingerprint,
@@ -8,17 +10,35 @@ import {
   Globe,
   Laptop,
   LogOut,
+  Loader2,
 } from 'lucide-react';
-import { updatePassword } from '../actions';
 import { UserData } from '../types';
-import { SubmitButton } from './submit-button';
-import { FormMessage } from './form-message';
+import { useSettingsMutations } from '../useSettingsMutations';
+
+interface FormState {
+  success: boolean;
+  message: string;
+}
 
 export function SecuritySection({ user }: { user: UserData }) {
-  const [passwordState, passwordAction] = useActionState(
-    async (_prevState: unknown, formData: FormData) => updatePassword(formData),
-    null
-  );
+  const { updatePassword, isUpdatingPassword } = useSettingsMutations();
+  const [passwordState, setPasswordState] = useState<FormState | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const handlePasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPasswordState(null);
+
+    const formData = new FormData(e.currentTarget);
+    const result = await updatePassword(formData);
+
+    setPasswordState(result);
+
+    // Reset password inputs on success
+    if (result.success && formRef.current) {
+      formRef.current.reset();
+    }
+  };
 
   return (
     <section
@@ -42,7 +62,7 @@ export function SecuritySection({ user }: { user: UserData }) {
             <Fingerprint className="w-4 h-4 text-slate-400" />
             Change Password
           </h3>
-          <form action={passwordAction} className="space-y-4">
+          <form ref={formRef} onSubmit={handlePasswordSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">Current Password</label>
@@ -66,11 +86,31 @@ export function SecuritySection({ user }: { user: UserData }) {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3">
-              <FormMessage state={passwordState} />
-              <SubmitButton className="text-white bg-violet-600 hover:bg-violet-700 shadow-sm shadow-violet-600/10">
-                Update Password
-              </SubmitButton>
+            <div className="flex items-center justify-end gap-3">
+              {passwordState && (
+                <p
+                  className={`text-sm ${
+                    passwordState.success ? 'text-emerald-600' : 'text-rose-600'
+                  }`}
+                >
+                  {passwordState.message}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isUpdatingPassword}
+                className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-violet-600/10 transition-all"
+              >
+                {isUpdatingPassword ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Password'
+                )}
+              </button>
             </div>
           </form>
         </div>

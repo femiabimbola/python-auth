@@ -1,17 +1,39 @@
-// frontend/src/app/%28dashboard%29/settings/components/danger-zone.tsx
+// frontend/src/app/(dashboard)/settings/components/danger-zone.tsx
 
 'use client';
 
-import { useActionState } from 'react';
-import { Trash2 } from 'lucide-react';
-import { deleteAccount } from '../actions';
-import { FormMessage } from './form-message';
+import { useState } from 'react';
+import { Trash2, Loader2 } from 'lucide-react';
+import { useSettingsMutations } from '../useSettingsMutations';
+
+interface FormState {
+  success: boolean;
+  message?: string;
+}
 
 export function DangerZone() {
-  const [state, formAction] = useActionState(
-    async (_prevState: unknown) => deleteAccount(),
-    null
-  );
+  const { deleteAccount, isDeletingAccount } = useSettingsMutations();
+  const [state, setState] = useState<FormState | null>(null);
+
+  const handleDelete = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setState(null);
+
+    // Optional client-side confirmation check
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account? This action cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    const result = await deleteAccount();
+    
+    if (result.success) {
+      // Redirect or handle post-deletion cleanup here
+      window.location.href = '/login';
+    } else {
+      setState(result);
+    }
+  };
 
   return (
     <section className="bg-white rounded-2xl border border-red-200 shadow-sm overflow-hidden">
@@ -34,14 +56,31 @@ export function DangerZone() {
               removed.
             </p>
           </div>
-          <form action={formAction} className="flex items-center gap-3">
-            <FormMessage state={state} />
+          <form onSubmit={handleDelete} className="flex items-center gap-3">
+            {state?.message && (
+              <p
+                className={`text-sm ${
+                  state.success ? 'text-emerald-600' : 'text-rose-600'
+                }`}
+              >
+                {state.message}
+              </p>
+            )}
+
             <button
               type="submit"
-              className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 border border-red-200 
-                rounded-xl hover:bg-red-100 hover:border-red-300 active:scale-[0.98] transition-all"
+              disabled={isDeletingAccount}
+              className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 border border-red-200 
+                rounded-xl hover:bg-red-100 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
             >
-              Delete Account
+              {isDeletingAccount ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Account'
+              )}
             </button>
           </form>
         </div>

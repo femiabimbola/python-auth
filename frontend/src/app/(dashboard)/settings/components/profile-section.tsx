@@ -1,19 +1,32 @@
-// frontend/src/app/%28dashboard%29/settings/components/profile-section.tsx
+// frontend/src/app/(dashboard)/settings/components/profile-section.tsx
 
 'use client';
 
-import { useActionState } from 'react';
-import { User, Mail, AlertCircle } from 'lucide-react';
-import { updateProfile } from '../actions';
+import { useState } from 'react';
+import { User, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { UserData } from '../types';
-import { SubmitButton } from './submit-button';
-import { FormMessage } from './form-message';
+import { useSettingsMutations } from '@/app/(dashboard)/settings/useSettingsMutations';
+
+interface FormState {
+  success: boolean;
+  message: string;
+}
 
 export function ProfileSection({ user }: { user: UserData }) {
-  const [state, formAction] = useActionState(
-    async (_prevState: unknown, formData: FormData) => updateProfile(formData),
-    null
-  );
+  const { updateProfile, isUpdatingProfile } = useSettingsMutations();
+  const [state, setState] = useState<FormState | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setState(null);
+
+    const formData = new FormData(e.currentTarget);
+    const result = await updateProfile(formData);
+    
+    if (result) {
+      setState(result);
+    }
+  };
 
   return (
     <section
@@ -30,7 +43,7 @@ export function ProfileSection({ user }: { user: UserData }) {
         </div>
       </div>
 
-      <form action={formAction} className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="space-y-2">
             <label htmlFor="firstName" className="block text-sm font-medium text-slate-700">
@@ -86,10 +99,30 @@ export function ProfileSection({ user }: { user: UserData }) {
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-2">
-          <FormMessage state={state} />
-          <SubmitButton className="text-white bg-slate-900 hover:bg-slate-800 shadow-sm shadow-slate-900/10">
-            Save Changes
-          </SubmitButton>
+          {state && (
+            <p
+              className={`text-sm ${
+                state.success ? 'text-emerald-600' : 'text-rose-600'
+              }`}
+            >
+              {state.message}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isUpdatingProfile}
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-slate-900/10 transition-all"
+          >
+            {isUpdatingProfile ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </button>
         </div>
       </form>
     </section>

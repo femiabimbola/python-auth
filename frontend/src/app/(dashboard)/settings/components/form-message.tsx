@@ -1,4 +1,4 @@
-// frontend/src/app/%28dashboard%29/settings/components/form-message.tsx
+// frontend/src/app/(dashboard)/settings/components/form-message.tsx
 
 'use client';
 
