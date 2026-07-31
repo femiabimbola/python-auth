@@ -13,12 +13,12 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 
-import { 
-  JobSeekerFormData, 
-  jobSeekerSchema, 
-  stepSchemas, 
-  stepNames, 
-  SalaryCurrency 
+import {
+  JobSeekerFormData,
+  jobSeekerSchema,
+  stepSchemas,
+  stepNames,
+  SalaryCurrency,
 } from "../schema";
 import { StepIndicator } from "./step-indicator";
 import { StepContact } from "./steps/step-contact";
@@ -56,7 +56,6 @@ const defaultValues: JobSeekerFormData = {
 };
 
 export function JobSeekerForm() {
-  
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -78,27 +77,32 @@ export function JobSeekerForm() {
     }
 
     const currentSchema = stepSchemas[currentStep];
-    
+
     // Extract inner schema shape safely even if wrapped in .refine() (ZodEffects)
-    const shape = "shape" in currentSchema 
-      ? currentSchema.shape 
-      : (currentSchema as any)._def.schema.shape;
+    const shape =
+      "shape" in currentSchema
+        ? currentSchema.shape
+        : (currentSchema as any)._def.schema.shape;
 
     const fields = Object.keys(shape) as Array<keyof JobSeekerFormData>;
     const result = await form.trigger(fields);
     return result;
   }, [currentStep, form]);
 
-  const handleNext = useCallback(async () => { 
-    if (isLastStep) return;
+  const handleNext = useCallback(
+    async (e?: React.SyntheticEvent) => {
+      if (e) e.preventDefault();
+      if (isLastStep) return;
 
-    const isValid = await validateCurrentStep();
-    if (isValid) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      toast.error("Please fix the errors before proceeding.");
-    }
-  }, [isLastStep, validateCurrentStep]);
+      const isValid = await validateCurrentStep();
+      if (isValid) {
+        setCurrentStep((prev) => prev + 1);
+      } else {
+        toast.error("Please fix the errors before proceeding.");
+      }
+    },
+    [isLastStep, validateCurrentStep],
+  );
 
   const handleBack = useCallback(() => {
     if (!isFirstStep) {
@@ -122,25 +126,25 @@ export function JobSeekerForm() {
       setIsSubmitting(true);
 
       const payload = {
-      ...data,
-      // 1. Convert uppercase enums ("PART_TIME", "HYBRID") to lowercase ("part_time", "hybrid")
-      preferred_job_type: data.preferred_job_type 
-        ? data.preferred_job_type.toLowerCase() 
-        : null,
-      preferred_workplace_type: data.preferred_workplace_type 
-        ? data.preferred_workplace_type.toLowerCase() 
-        : null,
+        ...data,
+        // 1. Convert uppercase enums ("PART_TIME", "HYBRID") to lowercase ("part_time", "hybrid")
+        preferred_job_type: data.preferred_job_type
+          ? data.preferred_job_type.toLowerCase()
+          : null,
+        preferred_workplace_type: data.preferred_workplace_type
+          ? data.preferred_workplace_type.toLowerCase()
+          : null,
 
-      // 2. Convert empty strings to null (or fallback strings if backend strictly requires str)
-      summary: data.summary?.trim() || null,
-      resume_url: data.resume_url?.trim() || null,
-      profile_image_url: data.profile_image_url?.trim() || null,
+        // 2. Convert empty strings to null (or fallback strings if backend strictly requires str)
+        summary: data.summary?.trim() || null,
+        resume_url: data.resume_url?.trim() || null,
+        profile_image_url: data.profile_image_url?.trim() || null,
 
-      // 3. Ensure numeric fields pass valid numbers or null (depending on backend setup)
-      years_of_experience: data.years_of_experience ?? null,
-      preferred_salary_min: data.preferred_salary_min ?? 0,
-      preferred_salary_max: data.preferred_salary_max ?? 0,
-    };
+        // 3. Ensure numeric fields pass valid numbers or null (depending on backend setup)
+        years_of_experience: data.years_of_experience ?? null,
+        preferred_salary_min: data.preferred_salary_min ?? 0,
+        preferred_salary_max: data.preferred_salary_max ?? 0,
+      };
 
       try {
         console.log("Sending payload:", payload);
@@ -154,7 +158,9 @@ export function JobSeekerForm() {
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.detail || errData.message || "Failed to create profile.");
+          throw new Error(
+            errData.detail || errData.message || "Failed to create profile.",
+          );
         }
 
         toast.success("Profile created successfully!", {
@@ -164,7 +170,8 @@ export function JobSeekerForm() {
         form.reset(defaultValues);
         setCurrentStep(0);
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof DOMException && error.name === "AbortError")
+          return;
 
         const message =
           error instanceof Error
@@ -175,15 +182,26 @@ export function JobSeekerForm() {
         setIsSubmitting(false);
       }
     },
-    [form]
+    [form],
   );
 
   return (
     <div className="w-full max-w-2xl mx-auto p-4">
-      <StepIndicator steps={[...stepNames, "Review"]} currentStep={currentStep} />
+      <StepIndicator
+        steps={[...stepNames, "Review"]}
+        currentStep={currentStep}
+      />
 
       <FormProvider {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (isLastStep) form.handleSubmit(handleSubmit)(e);
+             else {
+              handleNext(e);
+            }
+          }}
+        >
           <Card className="border shadow-sm">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">

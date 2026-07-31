@@ -69,14 +69,9 @@ def get_job_seeker_profile_by_id(
     ).first()
 
 
-def get_job_seeker_profile_by_user_id(
-    db: Session,
-    user_id: str
-) -> Optional[JobSeekerProfile]:
+def get_job_seeker_profile_by_user_id( db: Session, user_id: str) -> Optional[JobSeekerProfile]:
     """Get a job seeker profile by user ID."""
-    return db.query(JobSeekerProfile).filter(
-        JobSeekerProfile.user_id == user_id
-    ).first()
+    return db.query(JobSeekerProfile).filter(JobSeekerProfile.user_id == user_id).first()
 
 
 def get_public_job_seeker_profile(

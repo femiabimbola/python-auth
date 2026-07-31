@@ -58,7 +58,6 @@ class User(Base):
         return self.role == UserRole.SUPERADMIN
 
 
-
 class JobSeekerProfile(Base):
     """Extended profile for job seekers."""
     __tablename__ = "job_seeker_profiles"

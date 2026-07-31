@@ -1,6 +1,7 @@
 
 import { JobSeekerForm } from "./components/job-seeker-form";
-// import { Toaster } from "@/components/ui/toast"
+import { Toaster } from "@/components/ui/sonner"
+
 
 
 export default function Home() {
@@ -16,7 +17,7 @@ export default function Home() {
       </div>
       
       <JobSeekerForm />
-      {/* <Toaster position="bottom-right" richColors />  */}
+      <Toaster position="bottom-right" richColors /> 
       
     </main>
   );

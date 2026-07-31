@@ -2,9 +2,7 @@
 
 import { Controller, useFormContext } from "react-hook-form";
 import {
-  Briefcase,
-  Building2,
-  Wallet,
+  Briefcase,  Building2,   Wallet,
   Monitor,
   Plane,
   ArrowRightLeft,
@@ -68,7 +66,7 @@ export function StepPreferences() {
               <FieldLabel htmlFor={field.name}>Preferred Job Type</FieldLabel>
               <Select
                 onValueChange={(val) => field.onChange(val as JobType)}
-                value={field.value || undefined}
+                value={field.value || ""}
               >
                 <SelectTrigger id={field.name} className="w-full">
                   <Briefcase className="w-4 h-4 mr-2 text-zinc-400" />
@@ -95,7 +93,7 @@ export function StepPreferences() {
               <FieldLabel htmlFor={field.name}>Workplace Type</FieldLabel>
               <Select
                 onValueChange={(val) => field.onChange(val as WorkplaceType)}
-                value={field.value || undefined}
+                value={field.value || ""}
               >
                 <SelectTrigger id={field.name} className="w-full">
                   <Building2 className="w-4 h-4 mr-2 text-zinc-400" />

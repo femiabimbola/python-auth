@@ -62,8 +62,7 @@ def create_job_seeker_profile(
     description="Retrieve the authenticated user's job seeker profile."
 )
 def get_my_job_seeker_profile(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_job_seeker)
+    db: Session = Depends(get_db), current_user: User = Depends(require_job_seeker)
 ):
     """
     Get the current user's job seeker profile.
