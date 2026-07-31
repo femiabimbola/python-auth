@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeft, ChevronRight, Send, Loader2 } from "lucide-react";
@@ -56,6 +57,7 @@ const defaultValues: JobSeekerFormData = {
 };
 
 export function JobSeekerForm() {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -167,8 +169,7 @@ export function JobSeekerForm() {
           description: "Your job seeker profile has been saved.",
         });
 
-        form.reset(defaultValues);
-        setCurrentStep(0);
+        router.push("/dashboard");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError")
           return;
@@ -187,8 +188,7 @@ export function JobSeekerForm() {
 
   return (
     <div className="w-full max-w-2xl mx-auto p-4">
-      <StepIndicator
-        steps={[...stepNames, "Review"]}
+      <StepIndicator steps={[...stepNames, "Review"]}
         currentStep={currentStep}
       />
 

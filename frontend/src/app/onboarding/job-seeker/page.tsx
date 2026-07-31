@@ -1,7 +1,7 @@
 
 import { JobSeekerForm } from "./components/job-seeker-form";
 import { Toaster } from "@/components/ui/sonner"
-
+import { redirect } from "next/navigation";
 
 
 export default function Home() {
