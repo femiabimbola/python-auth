@@ -58,15 +58,13 @@ def create_job_seeker_profile(
 
 
 @router.get("/job-seeker/profile",response_model=JobSeekerProfileResponse,
-    summary="Get my job seeker profile",
+    summary="Get my job seeker profile",  status_code=status.HTTP_200_OK,
     description="Retrieve the authenticated user's job seeker profile."
 )
 def get_my_job_seeker_profile(
     db: Session = Depends(get_db), current_user: User = Depends(require_job_seeker)
 ):
-    """
-    Get the current user's job seeker profile.
-    """
+    """Get the current user's job seeker profile."""
     profile = services.get_job_seeker_profile_by_user_id(db=db, user_id=current_user.id)
     if not profile:
         raise NotFoundException("Job seeker profile not found")

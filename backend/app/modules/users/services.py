@@ -12,9 +12,7 @@ from app.core.exceptions import NotFoundException, ConflictException, Validation
 # ==================== CRUD Operations ====================
 
 def create_job_seeker_profile(
-    db: Session,
-    user_id: str,
-    profile_data: schemas.JobSeekerProfileCreate
+    db: Session, user_id: str, profile_data: schemas.JobSeekerProfileCreate
 ) -> JobSeekerProfile:
     """
     Create a new job seeker profile for a user.
@@ -33,9 +31,7 @@ def create_job_seeker_profile(
         raise ValidationException("User must have JOB_SEEKER role to create this profile")
     
     # Check if profile already exists
-    existing = db.query(JobSeekerProfile).filter(
-        JobSeekerProfile.user_id == user_id
-    ).first()
+    existing = db.query(JobSeekerProfile).filter(JobSeekerProfile.user_id == user_id).first()
     
     if existing:
         raise ConflictException("Job seeker profile already exists for this user")
@@ -59,14 +55,9 @@ def create_job_seeker_profile(
     return db_profile
 
 
-def get_job_seeker_profile_by_id(
-    db: Session,
-    profile_id: str
-) -> Optional[JobSeekerProfile]:
+def get_job_seeker_profile_by_id(db: Session, profile_id: str) -> Optional[JobSeekerProfile]:
     """Get a job seeker profile by its ID."""
-    return db.query(JobSeekerProfile).filter(
-        JobSeekerProfile.id == profile_id
-    ).first()
+    return db.query(JobSeekerProfile).filter(JobSeekerProfile.id == profile_id).first()
 
 
 def get_job_seeker_profile_by_user_id( db: Session, user_id: str) -> Optional[JobSeekerProfile]:
@@ -100,9 +91,7 @@ def update_job_seeker_profile(
         NotFoundException: If profile doesn't exist.
         ValidationException: If salary range is invalid.
     """
-    profile = db.query(JobSeekerProfile).filter(
-        JobSeekerProfile.user_id == user_id
-    ).first()
+    profile = db.query(JobSeekerProfile).filter(JobSeekerProfile.user_id == user_id).first()
     
     if not profile:
         raise NotFoundException("Job seeker profile not found")

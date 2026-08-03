@@ -35,10 +35,7 @@ export function useSettingsMutations() {
   };
 
   // 2. Update Password
-  const passwordMutation = useSWRMutation(
-    "/api/auth/password",
-    mutationFetcher,
-  );
+  const passwordMutation = useSWRMutation("/api/auth/password", mutationFetcher);
 
   const updatePassword = async (formData: FormData) => {
     try {
@@ -56,9 +53,8 @@ export function useSettingsMutations() {
   };
 
   // 3. Update Notifications
-  const notificationMutation = useSWRMutation(
-    "/api/users/me/notifications",
-    mutationFetcher,
+  const notificationMutation = useSWRMutation( "/api/users/me/notifications",
+     mutationFetcher,
   );
 
   const updateNotifications = async (formData: FormData) => {
