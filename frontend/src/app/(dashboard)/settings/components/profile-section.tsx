@@ -3,9 +3,9 @@
 'use client';
 
 import { useState } from 'react';
-import { User, Mail, AlertCircle, Loader2 } from 'lucide-react';
+import { User, Mail, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { UserData } from '../types';
-import { useSettingsMutations } from '@/app/(dashboard)/settings/useSettingsMutations';
+import { useSettingsMutations } from '../useSettingsMutations';
 
 interface FormState {
   success: boolean;
@@ -22,7 +22,7 @@ export function ProfileSection({ user }: { user: UserData }) {
 
     const formData = new FormData(e.currentTarget);
     const result = await updateProfile(formData);
-    
+
     if (result) {
       setState(result);
     }
@@ -33,14 +33,22 @@ export function ProfileSection({ user }: { user: UserData }) {
       id="profile"
       className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden scroll-mt-6"
     >
-      <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-          <User className="w-5 h-5" />
+      <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+            <User className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
+            <p className="text-sm text-slate-500">Update your personal details and public info.</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">Profile Information</h2>
-          <p className="text-sm text-slate-500">Update your personal details and public profile.</p>
-        </div>
+
+        {/* Role Badge */}
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 capitalize border border-slate-200/60">
+          <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+          {user.role.toLowerCase().replace('_', ' ')}
+        </span>
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -93,7 +101,7 @@ export function ProfileSection({ user }: { user: UserData }) {
             />
           </div>
           <p className="text-xs text-slate-500 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
+            <AlertCircle className="w-3 h-3 text-slate-400" />
             Contact support to change your email address.
           </p>
         </div>
@@ -112,7 +120,7 @@ export function ProfileSection({ user }: { user: UserData }) {
           <button
             type="submit"
             disabled={isUpdatingProfile}
-            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-slate-900/10 transition-all"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
           >
             {isUpdatingProfile ? (
               <>
