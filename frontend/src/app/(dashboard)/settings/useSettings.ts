@@ -13,11 +13,10 @@ export function useSettings() {
 
   // 1. Fetch current user
   const userSwr = useSWR<UserData>(
-    '/api/users/me', 
-    queryFetcher<UserData>,
+    '/api/users/me',  queryFetcher<UserData>,
     {
       onError: (err) => {
-        if (err instanceof ApiError && err.status === 401) {
+        if (err instanceof ApiError && err.status !== 401) {
           router.replace('/login');
         }
       },
@@ -27,7 +26,6 @@ export function useSettings() {
   const user = userSwr.data;
 
   // 2. Fetch job seeker profile ONLY if the user is a job seeker
-  // Passing `null` as key disables SWR execution when false or when user isn't loaded yet
   const profileKey = user?.is_job_seeker ? '/api/users/job-seeker/profile' : null;
 
   const profileSwr = useSWR<JobSeekerProfileData>(

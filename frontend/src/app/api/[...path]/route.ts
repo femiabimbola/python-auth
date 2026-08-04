@@ -90,7 +90,6 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
         
-         console.log("Refresh request:  93", refreshData);
         // Retry original target request with the fresh token
         forwardHeaders.set('Authorization', `Bearer ${refreshData.access_token}`);
         response = await fetch(targetUrl, {
@@ -100,7 +99,6 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
           signal: controller.signal,
         });
 
-        console.log("Refresh request status:103", response.status);
         // Strip hop-by-hop HTTP headers before forwarding back to client
         const cleanHeaders = new Headers(response.headers);
         cleanHeaders.delete('connection');
@@ -119,10 +117,9 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
           httpOnly: true,
           secure: isProd,
           sameSite: 'lax',
-          maxAge: 60 * 3, // 15 minutes
+          maxAge: 60 * 5, // 15 minutes
         });
 
-        console.log("Access token updated: 125");
         if (refreshData.refresh_token) {
           proxyResponse.cookies.set('refresh_token', refreshData.refresh_token, {
             httpOnly: true,
