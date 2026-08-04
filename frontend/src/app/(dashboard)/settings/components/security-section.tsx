@@ -11,6 +11,8 @@ import {
   Laptop,
   LogOut,
   Loader2,
+  MailCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { UserData } from '../types';
 import { useSettingsMutations } from '../useSettingsMutations';
@@ -23,6 +25,8 @@ interface FormState {
 export function SecuritySection({ user }: { user: UserData }) {
   const { updatePassword, isUpdatingPassword } = useSettingsMutations();
   const [passwordState, setPasswordState] = useState<FormState | null>(null);
+  const [isResetSending, setIsResetSending] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const handlePasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -30,13 +34,38 @@ export function SecuritySection({ user }: { user: UserData }) {
     setPasswordState(null);
 
     const formData = new FormData(e.currentTarget);
-    const result = await updatePassword(formData);
+    const newPass = formData.get('newPassword');
+    const confirmPass = formData.get('confirmPassword');
 
+    if (newPass !== confirmPass) {
+      setPasswordState({
+        success: false,
+        message: 'New password and confirmation do not match.',
+      });
+      return;
+    }
+
+    const result = await updatePassword(formData);
     setPasswordState(result);
 
-    // Reset password fields on success
     if (result?.success && formRef.current) {
       formRef.current.reset();
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    setIsResetSending(true);
+    // Replace with your API endpoint or mutation to trigger password reset email
+    try {
+      await new Promise((res) => setTimeout(res, 1000));
+      setResetSent(true);
+    } catch {
+      setPasswordState({
+        success: false,
+        message: 'Failed to send password reset email. Please try again.',
+      });
+    } finally {
+      setIsResetSending(false);
     }
   };
 
@@ -45,35 +74,55 @@ export function SecuritySection({ user }: { user: UserData }) {
       id="security"
       className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden scroll-mt-6"
     >
+      {/* Header */}
       <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
         <div className="p-2 rounded-lg bg-violet-50 text-violet-600">
           <KeyRound className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Security</h2>
-          <p className="text-sm text-slate-500">Manage your password and authentication methods.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Security Settings</h2>
+          <p className="text-sm text-slate-500">Manage credentials, password recovery, and active sessions.</p>
         </div>
       </div>
 
       <div className="p-6 space-y-8">
-        {/* Change Password Form */}
+        {/* --- Password Update Form --- */}
         <div>
-          <h3 className="text-sm font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <Fingerprint className="w-4 h-4 text-slate-400" />
-            Change Password
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <Fingerprint className="w-4 h-4 text-slate-400" />
+              Change Password
+            </h3>
+            <button
+              type="button"
+              onClick={handleSendResetEmail}
+              disabled={isResetSending || resetSent}
+              className="text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1 transition-colors disabled:opacity-50"
+            >
+              {isResetSending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : resetSent ? (
+                <MailCheck className="w-3 h-3 text-emerald-600" />
+              ) : (
+                <RotateCcw className="w-3 h-3" />
+              )}
+              {resetSent ? 'Reset Email Sent' : 'Forgot password? Send reset link'}
+            </button>
+          </div>
+
           <form ref={formRef} onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">Current Password</label>
+              <input
+                type="password"
+                name="currentPassword"
+                required
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all"
+                placeholder="••••••••"
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">Current Password</label>
-                <input
-                  type="password"
-                  name="currentPassword"
-                  required
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">New Password</label>
                 <input
@@ -85,9 +134,20 @@ export function SecuritySection({ user }: { user: UserData }) {
                   placeholder="Min. 8 characters"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Confirm New Password</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  required
+                  minLength={8}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all"
+                  placeholder="Confirm new password"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-3 pt-2">
               {passwordState && (
                 <p
                   className={`text-sm ${
@@ -118,7 +178,7 @@ export function SecuritySection({ user }: { user: UserData }) {
 
         <hr className="border-slate-100" />
 
-        {/* Two-Factor Authentication */}
+        {/* --- Two-Factor Authentication --- */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-3">
             <div className="p-2 rounded-lg bg-slate-100 text-slate-600 mt-0.5">
@@ -127,7 +187,7 @@ export function SecuritySection({ user }: { user: UserData }) {
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Two-Factor Authentication</h3>
               <p className="text-sm text-slate-500 mt-0.5 max-w-md">
-                Add an extra layer of security to your account by requiring a verification code in addition to your password.
+                Require an additional authentication step when signing into your account.
               </p>
             </div>
           </div>
@@ -145,7 +205,7 @@ export function SecuritySection({ user }: { user: UserData }) {
 
         <hr className="border-slate-100" />
 
-        {/* Active Sessions */}
+        {/* --- Active Sessions --- */}
         <div>
           <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
             <Globe className="w-4 h-4 text-slate-400" />
