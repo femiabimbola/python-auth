@@ -47,9 +47,7 @@ def create_job_seeker_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_job_seeker)
 ):
-    """
-    Create a job seeker profile for the current user.
-    """
+    """Create a job seeker profile for the current user."""
     return services.create_job_seeker_profile(
         db=db,
         user_id=current_user.id,

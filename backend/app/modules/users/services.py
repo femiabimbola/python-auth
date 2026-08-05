@@ -16,7 +16,7 @@ def create_job_seeker_profile(
 ) -> JobSeekerProfile:
     """
     Create a new job seeker profile for a user.
-    
+
     Raises:
         ConflictException: If user already has a profile.
         NotFoundException: If user does not exist or is not a job seeker.
@@ -65,14 +65,8 @@ def get_job_seeker_profile_by_user_id( db: Session, user_id: str) -> Optional[Jo
     return db.query(JobSeekerProfile).filter(JobSeekerProfile.user_id == user_id).first()
 
 
-def get_public_job_seeker_profile(
-    db: Session,
-    profile_id: str
-) -> Optional[JobSeekerProfile]:
-    """
-    Get a public job seeker profile by ID.
-    Returns None if profile doesn't exist or is private.
-    """
+def get_public_job_seeker_profile(db: Session, profile_id: str) -> Optional[JobSeekerProfile]:
+    """Get a public job seeker profile by ID."""
     return db.query(JobSeekerProfile).filter(
         JobSeekerProfile.id == profile_id,
         JobSeekerProfile.is_profile_public == True
