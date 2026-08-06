@@ -1,8 +1,11 @@
+// frontend/src/app/(users)/_components/Sidebar.tsx
+
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import useSWR from "swr";
 import {
   LayoutDashboard,
   BarChart3,
@@ -14,9 +17,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { queryFetcher } from "@/lib/query-fetcher";
+
+// Define a minimal UserData interface for the sidebar
+interface UserData {
+  first_name: string;
+  last_name: string;
+  role: string;
+}
 
 const navItems = [
   {
@@ -53,6 +65,9 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
+  // Fetch the current user data
+  const { data: user, isLoading } = useSWR<UserData>('/api/users/me', queryFetcher);
+
   return (
     <aside
       className={cn(
@@ -80,7 +95,7 @@ export function Sidebar() {
             className="font-semibold text-base tracking-tight"
             style={{ color: "var(--indigo)" }}
           >
-            Lumina
+            HireNaija
           </span>
         )}
       </div>
@@ -214,18 +229,31 @@ export function Sidebar() {
           style={{ borderColor: "var(--mist)" }}
         >
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 uppercase"
             style={{ background: "linear-gradient(135deg, var(--violet), var(--indigo))" }}
           >
-            AO
+            {isLoading || !user ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate" style={{ color: "var(--ink)" }}>
-              Ade Okafor
-            </p>
-            <p className="text-xs truncate" style={{ color: "var(--mid)" }}>
-              Admin
-            </p>
+            {isLoading || !user ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-3.5 bg-slate-200 rounded w-3/4"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-medium truncate capitalize" style={{ color: "var(--ink)" }}>
+                  {user.first_name} {user.last_name}
+                </p>
+                <p className="text-xs truncate capitalize" style={{ color: "var(--mid)" }}>
+                  {user.role.replace('_', ' ')}
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

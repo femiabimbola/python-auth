@@ -73,9 +73,7 @@ def get_public_job_seeker_profile(db: Session, profile_id: str) -> Optional[JobS
     ).first()
 
 
-def update_job_seeker_profile(
-    db: Session,
-    user_id: str,
+def update_job_seeker_profile(db: Session, user_id: str,
     profile_data: schemas.JobSeekerProfileUpdate
 ) -> JobSeekerProfile:
     """
@@ -110,19 +108,13 @@ def update_job_seeker_profile(
     return profile
 
 
-def delete_job_seeker_profile(
-    db: Session,
-    user_id: str
-) -> None:
+def delete_job_seeker_profile(db: Session, user_id: str) -> None:
     """
     Delete a job seeker profile.
-    
     Raises:
         NotFoundException: If profile doesn't exist.
     """
-    profile = db.query(JobSeekerProfile).filter(
-        JobSeekerProfile.user_id == user_id
-    ).first()
+    profile = db.query(JobSeekerProfile).filter(JobSeekerProfile.user_id == user_id).first()
     
     if not profile:
         raise NotFoundException("Job seeker profile not found")

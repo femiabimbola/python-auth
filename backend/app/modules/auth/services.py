@@ -242,6 +242,7 @@ def delete_expired_refresh_tokens(db: Session, user_id: str = None) -> int:
     db.commit()
     return result.rowcount
 
+
 def rotate_refresh_token_workflow(
     db: Session, request: RefreshRequest,
 ) -> tuple[str, str, str, bool]:
