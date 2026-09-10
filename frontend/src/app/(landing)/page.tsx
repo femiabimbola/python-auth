@@ -2,11 +2,11 @@
 import { OrbBackground } from '@/components/OrbBackground/OrbBackground';
 import { Navbar } from '@/components/Navbar/Navbar';
 
-import { Hero } from '@/app/(home)/_components/Hero/Hero';
+import { Hero } from '@/app/(landing)/_components/Hero/Hero';
 
-import { DashboardPreview } from '@/app/(home)/_components/DashboardPreview/DashboardPreview';
-import { Features } from '@/app/(home)/_components/Features/Features';
-import { SocialProof } from '@/app/(home)/_components/SocialProof/SocialProof';
+import { DashboardPreview } from '@/app/(landing)/_components/DashboardPreview/DashboardPreview';
+import { Features } from '@/app/(landing)/_components/Features/Features';
+import { SocialProof } from '@/app/(landing)/_components/SocialProof/SocialProof';
 
 
 import { Footer } from '@/components/Footer/Footer';
@@ -22,7 +22,7 @@ export default function HomePage() {
          <Features />
         <SocialProof />
       </main>
-       <Footer />
+      <Footer />
     
     </>
   );
