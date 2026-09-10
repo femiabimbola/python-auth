@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "../globals.css"
-import {Sidebar} from "./_components/Sidebar"
-import {Topbar} from "./_components/Topbar"
-import Footer from "./_components/Footer";
+import {Sidebar} from "../_components/Sidebar"
+import {Topbar} from "../_components/Topbar"
+import Footer from "../_components/Footer";
 
 
 export default function RootLayout({children,

@@ -263,7 +263,7 @@ async function onSubmit(values: RegisterFormValues) {
               Register Account
             </Button>
           </div>
-          <h6 className="text-center py-2"> Already have an account? <a href="/login" className="text-blue-700">Log in here</a></h6>
+          <h6 className="text-center py-2"> Already have an account? <a href="/applicant/login" className="text-blue-700">Log in here</a></h6>
         </form>
       </CardContent>
     </Card>
