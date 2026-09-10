@@ -15,7 +15,7 @@ export function Logo() {
           <circle cx="8" cy="8" r="2" fill="white" />
         </svg>
       </div>
-      <span className={styles.logoName}>Aurum</span>
+      <span className={styles.logoName}>HireNaija</span>
     </Link>
   );
 }

@@ -5,7 +5,7 @@ import uuid
 
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status, BackgroundTasks
-from sqlalchemy import select, update, delete
+from sqlalchemy import func, select, update, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -24,6 +24,7 @@ from app.modules.users.schemas import UserCreate
 from datetime import datetime, timedelta, timezone
 from app.services.email import send_verification_email, send_password_reset_email
 from app.modules.users.models import User
+from app.core.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,24 @@ def verify_user_email_workflow(db: Session, token: str) -> dict:
     return {"message": "Email verified successfully! Your account is active and you can now log in."}
 
 
-def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str, str]:
+def get_user_profile_status(user: User) -> bool:
+    """
+    Returns whether the user has completed the required profile
+    based on their role.
+    """
+    if user.is_job_seeker:
+        return user.job_seeker_profile is not None
+
+    if user.is_employer:
+        return user.employer_profile is not None
+
+    if user.is_admin or user.is_superadmin:
+        return True
+
+    return False
+
+
+def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str, str, str, bool]:
     """Verifies profile status and issues fresh credentials."""
     user = db.execute(
         select(User).where(User.email == credentials.email)
@@ -199,6 +217,8 @@ def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str
             detail="Email is not verified. Please check your inbox or request a new verification link.",
         )
 
+    has_profile = get_user_profile_status(user)
+
     access_token = create_access_token(user.id)
     refresh_token_str, jti, expires_at = create_refresh_token(user.id)
 
@@ -208,13 +228,33 @@ def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str
     db.add(db_refresh_token)
     db.commit()
 
-    return access_token, refresh_token_str
+    return access_token, refresh_token_str, user.role.value, has_profile
 
 
-def rotate_refresh_token_workflow(db: Session, request: RefreshRequest) -> tuple[str, str]:
-    """Validates refresh token states, enforcing safety checks against theft/reuse."""
-    payload = verify_token(request.refresh_token, expected_type="refresh")
+def delete_expired_refresh_tokens(db: Session, user_id: str = None) -> int:
+    """Removes expired refresh tokens from the database. """
+    query = delete(RefreshToken).where(RefreshToken.expires_at < func.now())
     
+    if user_id:
+        query = query.where(RefreshToken.user_id == user_id)
+        
+    result = db.execute(query)
+    db.commit()
+    return result.rowcount
+
+
+def rotate_refresh_token_workflow(
+    db: Session, request: RefreshRequest,
+) -> tuple[str, str, str, bool]:
+    """
+    Validates refresh token, rotates it, and issues a fresh access/refresh token pair.
+    """
+    # Verify refresh token
+    payload = verify_token(
+        request.refresh_token,
+        expected_type="refresh",
+    )
+
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -226,48 +266,85 @@ def rotate_refresh_token_workflow(db: Session, request: RefreshRequest) -> tuple
 
     if not jti or not user_id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
         )
 
+    # Find stored refresh token
     db_token = db.execute(
         select(RefreshToken).where(
-            RefreshToken.token_jti == jti, RefreshToken.user_id == user_id
+            RefreshToken.token_jti == jti,
+            RefreshToken.user_id == user_id,
         )
     ).scalar_one_or_none()
 
-    if not db_token:
+    if db_token is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found",
         )
 
+    # Detect refresh token reuse
     if db_token.is_revoked:
-        # Token reuse detected: Nuclear mitigation option
         db.execute(
             update(RefreshToken)
             .where(RefreshToken.user_id == user_id)
             .values(is_revoked=True)
         )
         db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token reuse detected. All sessions have been revoked.",
         )
 
-    # Revoke old token
+    # Load the user
+    user = db.get(User, user_id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Determine profile completion
+    has_profile = get_user_profile_status(user)  
+
+    # Revoke current refresh token
     db_token.is_revoked = True
 
-    # Build replacements
+    # Generate new token pair
     new_access_token = create_access_token(user_id)
-    new_refresh_str, new_jti, new_expires = create_refresh_token(user_id)
 
-    new_db_token = RefreshToken(
-        token_jti=new_jti, user_id=user_id, expires_at=new_expires
+    (
+        new_refresh_token,
+        new_jti,
+        new_expiry,
+    ) = create_refresh_token(user_id)
+
+    # Remove expired refresh tokens
+    delete_expired_refresh_tokens(
+        db,
+        user_id=user_id,
     )
-    db.add(new_db_token)
+
+    # Store the new refresh token
+    db.add(
+        RefreshToken(
+            token_jti=new_jti,
+            user_id=user_id,
+            expires_at=new_expiry,
+        )
+    )
+
     db.commit()
 
-    return new_access_token, new_refresh_str
-
+    return (
+        new_access_token,
+        new_refresh_token,
+        user.role.value,
+        has_profile,
+    )
 
 def revoke_session_workflow(db: Session, request: RefreshRequest) -> None:
     """Safely tears down a session track on logout."""
@@ -407,3 +484,19 @@ def change_password_workflow(db: Session, token: str, new_password: str) -> dict
     logger.info(f"Password reset completed for user_id: {user.id}")
 
     return {"message": "Password has been reset successfully"}
+
+
+def run_daily_cleanup():
+    """Independent database worker for cleaning up expired tokens.
+    Designed to be called by the background scheduler.
+    """
+    db = SessionLocal()
+    try:
+        print("[Cron Job] Starting expired token cleanup...")
+        # delete_expired_refresh_tokens is already in this file
+        deleted_count = delete_expired_refresh_tokens(db) 
+        print(f"[Cron Job] Successfully purged {deleted_count} expired refresh tokens.")
+    except Exception as e:
+        print(f"[Cron Job Error] Failed to purge tokens: {e}")
+    finally:
+        db.close()

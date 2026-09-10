@@ -8,7 +8,6 @@ export function CtaBanner() {
 
   function handleSubmit() {
     if (!email) return;
-    // TODO: wire up to your signup API
     console.log('Signup email:', email);
   }
 

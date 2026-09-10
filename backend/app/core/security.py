@@ -9,7 +9,6 @@ from app.core.config import settings
 
 # =========================================================================
 # PASSWORD CRYPTOGRAPHY (Using modern, native bcrypt wrapper)
-#  Make sure you run pip install bcrypt pyjwt before running this.
 # =========================================================================
 
 def hash_password(password: str) -> str:

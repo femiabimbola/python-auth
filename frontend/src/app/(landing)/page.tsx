@@ -8,7 +8,7 @@ import { DashboardPreview } from '@/app/(landing)/_components/DashboardPreview/D
 import { Features } from '@/app/(landing)/_components/Features/Features';
 import { SocialProof } from '@/app/(landing)/_components/SocialProof/SocialProof';
 
-// import { CtaBanner } from '@/components/sections/CtaBanner';
+
 import { Footer } from '@/components/Footer/Footer';
 
 export default function HomePage() {
@@ -21,7 +21,6 @@ export default function HomePage() {
         <DashboardPreview />
          <Features />
         <SocialProof />
-        {/* <CtaBanner />    */}
       </main>
       <Footer />
     
