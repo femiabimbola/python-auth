@@ -115,18 +115,17 @@ export default function LoginPage() {
         const { has_profile, role } = data;
 
       if (!has_profile) {
-        // Redirect to role-specific onboarding
         if (role === "job_seeker") {
           router.push("/onboarding/job-seeker");
         } else if (role === "employer") {
           router.push("/onboarding/employer");
         } else {
-          router.push("/dashboard");
+          router.push("/odin/dashboard");
         }
         return;
       }
 
-        router.push("/dashboard");
+        router.push("/applicant/dashboard");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
@@ -242,7 +241,7 @@ export default function LoginPage() {
           <p className="text-center py-4 text-sm text-zinc-500 dark:text-zinc-400">
             Don&apos;t have an account?{" "}
             <a
-              href="/register"
+              href="/applicant/register"
               className="text-blue-600 font-medium hover:underline dark:text-blue-400"
             >
               Register here
