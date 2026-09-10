@@ -79,16 +79,12 @@ export default function LoginPage() {
       try {
         const response = await fetch("/api/auth/login", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: {"Content-Type": "application/json",},
           body: JSON.stringify(values),
           signal: controller.signal,
         });
 
-        const data = await response
-          .json()
-          .catch(() => ({}) as LoginSuccessResponse & ApiErrorResponse);
+        const data = await response.json().catch(() => ({}) as LoginSuccessResponse & ApiErrorResponse);
 
         if (!response.ok) {
           if (response.status === 422 && Array.isArray(data.detail)) {
@@ -115,10 +111,7 @@ export default function LoginPage() {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to connect to the server.";
+        const message = error instanceof Error  ? error.message  : "Failed to connect to the server.";
         setApiError(message);
       } finally {
         setIsLoading(false);
