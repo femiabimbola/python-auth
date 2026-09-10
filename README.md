@@ -3,6 +3,9 @@
 2. uv venv
 3. source .venv/Scripts/activate
 4. uv pip install -r requirement.txt
+5. uv run uvicorn app.main:app --reload 
+
+
 
 ### Local Installation for frontend
 1. cd frontend

@@ -5,9 +5,10 @@ import uuid
 
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status, BackgroundTasks
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 
 from app.core.security import (
     hash_password,
@@ -17,11 +18,11 @@ from app.core.security import (
     verify_token,
 )
 from app.modules.users.models import User
-from app.modules.auth.models import RefreshToken, EmailVerificationToken
+from app.modules.auth.models import RefreshToken, EmailVerificationToken, PasswordResetToken  
 from app.modules.auth.schemas import UserLogin, RefreshRequest, RegistrationResponse, EmailRequestSchema
 from app.modules.users.schemas import UserCreate
 from datetime import datetime, timedelta, timezone
-from app.services.email import send_verification_email
+from app.services.email import send_verification_email, send_password_reset_email
 from app.modules.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,7 @@ def register_user_workflow(
         message="Registration successful. Please check your email to verify your account.",
         requires_verification=True,
     )
+
 
 def verify_user_email_workflow(db: Session, token: str) -> dict:
     """
@@ -281,6 +283,61 @@ def revoke_session_workflow(db: Session, request: RefreshRequest) -> None:
                 db.commit()
 
 
+def request_password_reset_workflow(db: Session, email: str, background_tasks: BackgroundTasks) -> dict:
+
+    email_normalized = email.strip().lower()
+    user = db.execute(select(User).where(User.email == email_normalized)).scalar_one_or_none()
+
+    if not user:
+        logger.warning(f"Password reset requested for non-existent email: {email_normalized}")
+        return {"message": "If that email exists in our system, we have sent a reset link."}
+
+    recent = db.execute(
+        select(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.created_at > datetime.now(timezone.utc) - timedelta(minutes=5)
+        )
+    ).scalar_one_or_none()
+
+    if recent:
+        logger.info(f"Rate-limited password reset for user_id: {user.id}")
+        return {"message": "Relax, If that email exists in our system, we have sent a reset link."}
+
+    
+    db.execute(
+        delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+    )
+
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+
+    new_token = PasswordResetToken(
+        token=token,
+        user_id=user.id,
+        expires_at=expires_at,
+    )
+
+    db.add(new_token)
+    
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception(f"Failed to create reset token for: {email_normalized}")
+        raise  # Route catches this and returns 500
+
+    full_name = f"{user.first_name} {user.last_name}"
+    background_tasks.add_task(
+        send_password_reset_email, email=user.email, full_name=full_name,
+        reset_token=token
+    )
+
+    logger.info(f"Password reset token created for user_id: {user.id}")
+
+    return {"message": "If that email exists in our system, we have sent a reset link."}
+
+
 def resend_verification_workflow(
     db: Session, email_schema: EmailRequestSchema,   background_tasks: BackgroundTasks
 ) -> None:
@@ -303,3 +360,50 @@ def resend_verification_workflow(
         full_name=full_name, 
         verification_token=verification_token,
     )
+
+
+def verify_reset_token(db: Session, token: str) -> User:
+    """Verify token is valid and not expired. Returns user or raises exception."""
+    
+    token_record = db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token == token)
+    ).scalar_one_or_none()
+
+    if not token_record:
+        raise ValueError("Invalid token")
+
+    if token_record.expires_at < datetime.now(timezone.utc):
+        # Clean up expired token
+        db.execute(delete(PasswordResetToken).where(PasswordResetToken.id == token_record.id))
+        db.commit()
+        raise ValueError("Reset token has expired")
+
+    # Load user
+    user = db.execute(
+        select(User).where(User.id == token_record.user_id)
+    ).scalar_one_or_none()
+
+    if not user:
+        raise ValueError("User not found")
+    return user
+
+
+def change_password_workflow(db: Session, token: str, new_password: str) -> dict:
+    """Verify token and update password."""
+    user = verify_reset_token(db, token)
+
+    # Hash new password
+    hashed_password = hash_password(new_password)
+
+    # Update user password
+    user.hashed_password = hashed_password
+    user.updated_at = datetime.now(timezone.utc)
+
+    # Delete ALL reset tokens for this user (security: invalidate all tokens)
+    db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id))
+
+    db.commit()
+
+    logger.info(f"Password reset completed for user_id: {user.id}")
+
+    return {"message": "Password has been reset successfully"}

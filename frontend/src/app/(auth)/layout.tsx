@@ -1,4 +1,4 @@
-// app/(auth)/layout.tsx or your equivalent layout file
+
 import React from 'react';
 import { OrbBackground } from '@/components/OrbBackground/OrbBackground';
 
