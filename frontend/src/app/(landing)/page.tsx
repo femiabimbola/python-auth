@@ -23,7 +23,7 @@ export default function HomePage() {
         <SocialProof />
         {/* <CtaBanner />    */}
       </main>
-       <Footer />
+      <Footer />
     
     </>
   );
