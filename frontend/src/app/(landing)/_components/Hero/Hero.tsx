@@ -28,7 +28,7 @@ export function Hero() {
       </p>
 
       <div className={styles.heroCta}>
-        <Link href="/applicant/register" className={styles.btnLarge}>Get started free</Link>
+        <Link href="/applicant/auth/register" className={styles.btnLarge}>Get started free</Link>
         <Link href="#" className={styles.btnOutline}>See how it works</Link>
       </div>
 
