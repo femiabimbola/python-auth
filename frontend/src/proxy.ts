@@ -5,25 +5,38 @@ import type { NextRequest } from 'next/server';
 export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value;
   const refreshToken = request.cookies.get('refresh_token')?.value;
-  const hasSession = Boolean(accessToken || refreshToken);
+  
+  const isTokenValid = (token?: string) => 
+    Boolean(token && token !== 'null' && token !== 'undefined' && token !== '');
+    
+  const hasSession = isTokenValid(accessToken) || isTokenValid(refreshToken);
 
   const { pathname } = request.nextUrl;
 
+  // Identify all guest-only auth routes (including nested ones like /applicant/auth/login)
   const isAuthRoute =
-    pathname === '/login' || pathname === '/register' ||
+    pathname === '/login' || 
+    pathname === '/register' ||
     pathname.startsWith('/login/') ||
-    pathname.startsWith('/register/');
+    pathname.startsWith('/register/') ||
+    pathname.includes('/auth/login') ||
+    pathname.includes('/auth/register');
 
-  const isProtected = pathname.startsWith('/applicants') ||
-    pathname.startsWith('/employer') ||
-    pathname.startsWith('/odin');
+  // Route is protected ONLY if it starts with a protected prefix AND is not an auth route
+  const isProtected = 
+    (pathname.startsWith('/applicant') ||
+     pathname.startsWith('/employer') ||
+     pathname.startsWith('/odin')) &&
+    !isAuthRoute;
 
+  // 1. Authenticated user hitting login/register → send to dashboard
   if (isAuthRoute && hasSession) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/applicant/dashboard', request.url));
   }
 
+  // 2. Unauthenticated user hitting protected route → send to login
   if (isProtected && !hasSession) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/applicant/auth/login', request.url));
   }
 
   return NextResponse.next();
@@ -35,8 +48,8 @@ export const config = {
     '/register',
     '/login/:path*',
     '/register/:path*',
-    '/applicants',
-    '/applicants/:path*',
+    '/applicant',
+    '/applicant/:path*',
     '/employer',
     '/employer/:path*',
     '/odin',
