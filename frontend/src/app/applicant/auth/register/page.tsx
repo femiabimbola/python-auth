@@ -71,9 +71,7 @@ async function onSubmit(values: RegisterFormValues) {
 
     const response = await fetch(`${apiUrl}/api/auth/register`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: {"Content-Type": "application/json",},
       body: JSON.stringify({
         email: values.email,
         first_name: values.first_name,
@@ -97,7 +95,7 @@ async function onSubmit(values: RegisterFormValues) {
             });
           }
         });
-        return; // Stop execution here so it doesn't fall through to the global error catcher
+        return;
       }
 
       // 2. Fallback fallback for non-422 errors (e.g., 400 Bad Request, 500 Server Error)

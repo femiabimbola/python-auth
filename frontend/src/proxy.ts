@@ -13,7 +13,6 @@ export function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Identify all guest-only auth routes (including nested ones like /applicant/auth/login)
   const isAuthRoute =
     pathname === '/login' || 
     pathname === '/register' ||
@@ -22,12 +21,17 @@ export function proxy(request: NextRequest) {
     pathname.includes('/auth/login') ||
     pathname.includes('/auth/register');
 
-  // Route is protected ONLY if it starts with a protected prefix AND is not an auth route
+  // Identify routes that must be accessible to everyone (e.g., verifying email, resetting passwords)
+  const isPublicRoute = 
+    pathname.includes('/auth/verify-email'); // Add /auth/forgot-password here in the future if needed
+
+  // Route is protected ONLY if it starts with a protected prefix AND is not an auth/public route
   const isProtected = 
     (pathname.startsWith('/applicant') ||
      pathname.startsWith('/employer') ||
      pathname.startsWith('/odin')) &&
-    !isAuthRoute;
+    !isAuthRoute &&
+    !isPublicRoute;
 
   // 1. Authenticated user hitting login/register → send to dashboard
   if (isAuthRoute && hasSession) {

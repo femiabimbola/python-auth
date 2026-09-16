@@ -38,7 +38,6 @@ def register_user_workflow(
     
     """
     Registers a new user efficiently using a single atomic database transaction.
-    Scales flawlessly by relying on DB constraints instead of pre-checking.
     """
     verification_token = secrets.token_urlsafe(32)
     user_uuid = str(uuid.uuid4())
@@ -61,7 +60,6 @@ def register_user_workflow(
         db.flush()
 
         # 3. If the flush succeeds, it means the email is unique!
-        # Now we can safely add the token record.
         verification_record = EmailVerificationToken(
             user_id=user_uuid,
             token=verification_token,

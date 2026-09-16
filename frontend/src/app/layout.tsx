@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "A Secure Authentication",
-  description: "A premium authentication system built with FastAPI and Next.js featuring access tokens, refresh token rotation, and secure httpOnly cookie storage.",
+  title: "Job Hire",
+  description: "A Job Application.",
 };
 
 export default function RootLayout({
