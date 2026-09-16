@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
     MAIL_FROM: str = "noreply@yourdomain.com"
+    MAIL_FROM_ADDRESS: str = "noreply@yourdomain.com"  # Add this
+    MAIL_FROM_NAME: str = "Demo"                        # Add this
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"  # Or your provider
     MAIL_STARTTLS: bool = True

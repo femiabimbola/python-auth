@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState } from "react";
+import { useRouter } from "next/navigation"; 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -18,7 +19,6 @@ import {
 import {
   Field,
   FieldError,
-  FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -44,12 +44,14 @@ const registerSchema = z
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const router = useRouter(); 
+  
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // 2. Setup the form with the Zod resolver
+  // 3. Setup the form with the Zod resolver
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -61,7 +63,7 @@ export default function RegisterPage() {
     },
   });
 
-// 3. Post request handler
+// 4. Post request handler
 async function onSubmit(values: RegisterFormValues) {
   setIsLoading(true);
   setApiError(null);
@@ -84,13 +86,12 @@ async function onSubmit(values: RegisterFormValues) {
     const data = await response.json();
 
     if (!response.ok) {
-      // 1. If it's a validation error, map errors directly to the inputs 
+      // If it's a validation error, map errors directly to the inputs 
       if (response.status === 422 && data.detail && Array.isArray(data.detail)) {
         data.detail.forEach((err: any) => {
           const fieldName = err.loc[1] as keyof RegisterFormValues;
           if (fieldName) {
-            form.setError(fieldName, {
-              type: "server",
+            form.setError(fieldName, { type: "server",
               message: err.msg.replace(/^Value error,\s*/i, "")
             });
           }
@@ -98,13 +99,17 @@ async function onSubmit(values: RegisterFormValues) {
         return;
       }
 
-      // 2. Fallback fallback for non-422 errors (e.g., 400 Bad Request, 500 Server Error)
+      // Fallback for non-422 errors (e.g., 400 Bad Request, 500 Server Error)
       let errorMessage =  data.detail || data.message || "Something went wrong during registration.";
       throw new Error(errorMessage);
     }
     
     setIsSuccess(true);
     form.reset();
+    
+    // 5. Redirect the user to the verification page
+    router.push("/applicant/auth/verify-email");
+    
   } catch (error: any) {
     // This catches your thrown Error or general network connection failures
     setApiError(error.message || "Failed to connect to the server.");
@@ -127,7 +132,7 @@ async function onSubmit(values: RegisterFormValues) {
       <CardContent>
         {isSuccess && (
           <div className="mb-4 p-3 text-sm text-green-600 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-            Registration successful. Please check your email to verify your account
+            Registration successful. Redirecting...
           </div>
         )}
 
