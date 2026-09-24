@@ -1,97 +1,174 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import * as React from "react";
+import { useCallback, useRef, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
+import { Loader2 } from "lucide-react";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
-type VerificationStatus = "loading" | "success" | "error";
+// Define the validation schema for the 6-digit OTP
+const verifySchema = z.object({
+  otp: z.string().length(6, "Your verification code must be exactly 6 digits."),
+});
 
-function VerifyEmailContent() {
-  const searchParams = useSearchParams();
+type VerifyFormValues = z.infer<typeof verifySchema>;
+
+export default function VerifyEmailPage() {
   const router = useRouter();
-  const token = searchParams.get("token");
-  
-  const [status, setStatus] = useState<VerificationStatus>("loading");
-  const [message, setMessage] = useState("We are verifying your email address. Please wait.");
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setMessage("Missing or invalid verification token.");
-      return;
-    }
+  const form = useForm<VerifyFormValues>({
+    resolver: zodResolver(verifySchema),
+    defaultValues: {
+      otp: "",
+    },
+  });
 
-    const verifyToken = async () => {
+  const onSubmit = useCallback(
+    async (values: VerifyFormValues) => {
+      // Abort any previous ongoing requests
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setIsLoading(true);
+      setApiError(null);
+
       try {
-        // Calling your backend API
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        const response = await fetch(`${apiUrl}/api/auth/verify-email?token=${token}`, {
-          method: "GET", 
+        const response = await fetch("/api/auth/verify-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+          signal: controller.signal,
+          credentials: "include",
         });
 
-        if (response.ok) {
-          setStatus("success");
-          setMessage("Your email has been successfully verified! You can now log in.");
-        } else {
-          const data = await response.json();
-          setStatus("error");
-          setMessage(data.message || "The verification link is invalid or has expired.");
-        }
-      } catch (error) {
-        setStatus("error");
-        setMessage("Something went wrong on our end. Please try again later.");
-      }
-    };
+        const data = await response.json().catch(() => ({}));
 
-    verifyToken();
-  }, [token]);
+        if (!response.ok) {
+          const errorMessage =
+            data.message || data.detail || "Invalid verification code.";
+          throw new Error(errorMessage);
+        }
+
+        // On success, redirect the user to the dashboard or login page
+        router.push("/applicant/dashboard");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to connect to the server.";
+        setApiError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [router],
+  );
+
+  const handleResendOTP = useCallback(async () => {
+    // Logic to resend the OTP
+    console.log("Resending OTP...");
+    // Add your fetch logic here for resending the OTP
+  }, []);
 
   return (
-    <Card className="w-full border-zinc-200/80 shadow-xl backdrop-blur-sm bg-white/90 dark:bg-zinc-900/90 dark:border-zinc-800/80">
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          {status === "loading" && <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />}
-          {status === "success" && <CheckCircle2 className="h-12 w-12 text-emerald-500" />}
-          {status === "error" && <XCircle className="h-12 w-12 text-destructive" />}
-        </div>
-        
-        <CardTitle className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {status === "loading" && "Verifying email..."}
-          {status === "success" && "Welcome aboard!"}
-          {status === "error" && "Verification failed"}
+    <Card className="w-full max-w-md mx-auto bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md shadow-xl border border-zinc-200/80 dark:border-zinc-800/80">
+      <CardHeader className="text-center space-y-1">
+        <CardTitle className="text-2xl font-semibold tracking-tight">
+          Verify your email
         </CardTitle>
-        
-        <CardDescription className="mt-2 text-zinc-500 dark:text-zinc-400">
-          {message}
+        <CardDescription>
+          We&apos;ve sent a 6-digit verification code to your email address. Please enter it below.
         </CardDescription>
       </CardHeader>
 
-      <CardFooter className="flex justify-center">
-        {status === "success" && (
-          <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer" onClick={() => router.push("/login")}>
-            Sign In
-          </Button>
+      <CardContent>
+        {apiError && (
+          <div
+            role="alert"
+            className="mb-4 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800"
+          >
+            {apiError}
+          </div>
         )}
-        {status === "error" && (
-          <Button className="w-full" variant="outline" onClick={() => router.push("/register")}>
-            Back to Registration
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
-  );
-}
 
-export default function VerifyEmailPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-      </div>
-    }>
-      <VerifyEmailContent />
-    </Suspense>
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+          <div className="space-y-6">
+            <Controller
+              name="otp"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    <FieldLabel htmlFor={field.name} className="sr-only">
+                      One-Time Password
+                    </FieldLabel>
+                    
+                    {/* Shadcn Input OTP Component - 6 Digits */}
+                    <InputOTP maxLength={6} {...field}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </div>
+                </Field>
+              )}
+            />
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Verify Email
+            </Button>
+          </div>
+
+          <p className="text-center mt-6 text-sm text-zinc-500 dark:text-zinc-400">
+            Didn't receive the code?{" "}
+            <button
+              type="button"
+              onClick={handleResendOTP}
+              className="text-blue-600 font-medium hover:underline dark:text-blue-400 focus:outline-none"
+            >
+              Click to resend
+            </button>
+          </p>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

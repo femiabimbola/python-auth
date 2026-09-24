@@ -59,8 +59,8 @@ export function DashboardContent() {
     },
   });
 
-  if (isLoading) return <div className="p-8 flex items-center justify-center min-h-[400px]">Loading...</div>;
-  
+  if (isLoading) return <div className="p-8 flex items-center justify-center min-h-100">Loading...</div>;
+
   if (error && error.status !== 401) {
     return <div className="p-8 text-red-500">Error: {error.message}</div>;
   }

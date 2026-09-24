@@ -26,8 +26,7 @@ def register(user_data: UserCreate, background_tasks: BackgroundTasks, request: 
             ip_address=ip_address, user_agent=user_agent
         )
     except HTTPException as http_exc:
-        # we roll back the session one last time at the router boundary to clear any poisoned state,
-        # then re-raise it so FastAPI safely bypasses structural database teardowns.
+        # we roll back the session one last time at the router boundary to clear any poisoned state
         raise http_exc
     except Exception as exc:
         db.rollback()
