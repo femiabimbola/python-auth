@@ -1,3 +1,5 @@
+# backend/app/services/email.py
+
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from app.core.config import settings
 
@@ -7,9 +9,9 @@ conf = ConnectionConfig(
     MAIL_FROM = settings.MAIL_FROM,
     MAIL_PORT = settings.MAIL_PORT,
     MAIL_SERVER = settings.MAIL_SERVER,
-    MAIL_STARTTLS = True,
-    MAIL_SSL_TLS = False,
-    USE_CREDENTIALS = True
+    MAIL_STARTTLS = settings.MAIL_STARTTLS,       # Now dynamic
+    MAIL_SSL_TLS = settings.MAIL_SSL_TLS,         # Now dynamic
+    USE_CREDENTIALS = settings.USE_CREDENTIALS    # Now dynamic
 )
 
 async def send_welcome_email(email: str, name: str):
@@ -22,27 +24,24 @@ async def send_welcome_email(email: str, name: str):
     fm = FastMail(conf)
     await fm.send_message(message)
 
-
-async def send_verification_email(email: str, full_name: str, verification_token: str):
+async def send_verification_email(email: str, full_name: str, verification_code: str):
     """
-    Sends a verification email containing the unique registration token.
+    Sends a verification email containing the 6-digit registration code.
     """
-    # Replace this link with your actual frontend verification route later
-    verification_link = f"{settings.FRONTEND_URL}/applicant/auth/verify-email?token={verification_token}"
     
     body_content = (
         f"Hello {full_name},\n\n"
-        f"Thank you for registering! Please verify your email address by clicking the link below:\n"
-        f"{verification_link}\n\n"
-        f"This link will expire in 24 hours.\n\n"
+        f"Thank you for registering! Please verify your email address by entering the 6-digit code below on the verification page:\n\n"
+        f"Code: {verification_code}\n\n"
+        f"This code will expire in 15 minutes.\n\n"
         f"If you did not create this account, please ignore this email."
     )
 
     message = MessageSchema(
-        subject="Verify Your Email Address",
+        subject="Your 6-Digit Verification Code",
         recipients=[email],
         body=body_content,
-        subtype=MessageType.plain
+        subtype=MessageType.plain  # Or MessageType.html if you decide to use HTML formatting later
     )
     
     fm = FastMail(conf)

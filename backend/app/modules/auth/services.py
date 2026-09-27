@@ -18,7 +18,7 @@ from app.core.security import (
     verify_token,
 )
 from app.modules.users.models import User
-from app.modules.auth.models import RefreshToken, EmailVerificationToken, PasswordResetToken  
+from app.modules.auth.models import RefreshToken, EmailVerificationCode, PasswordResetToken  
 from app.modules.auth.schemas import UserLogin, RefreshRequest, RegistrationResponse, EmailRequestSchema
 from app.modules.users.schemas import UserCreate
 from datetime import datetime, timedelta, timezone
@@ -37,13 +37,14 @@ def register_user_workflow(
 ) -> RegistrationResponse:
     
     """
-    Registers a new user efficiently using a single atomic database transaction.
+    Registers a new user and generates a 6-digit numeric OTP.
     """
-    verification_token = secrets.token_urlsafe(32)
+
+    verification_code = f"{secrets.randbelow(1_000_000):06d}"
     user_uuid = str(uuid.uuid4())
 
     try:
-        # 1. Build and add the user first
+        # 1. Build and add the user
         new_user = User(
             id=user_uuid,
             email=user_data.email,
@@ -56,14 +57,13 @@ def register_user_workflow(
         db.add(new_user)
 
         # 2. FORCE SQLAlchemy to send the user insert to the DB right now.
-        # This triggers the UniqueConstraint check immediately.
         db.flush()
 
-        # 3. If the flush succeeds, it means the email is unique!
-        verification_record = EmailVerificationToken(
+        # 3. Store the 6-digit code using the NEW model and column name
+        verification_record = EmailVerificationCode(
             user_id=user_uuid,
-            token=verification_token,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+            code=verification_code,  # Changed from 'token' to 'code'
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
         )
         db.add(verification_record)
 
@@ -75,8 +75,6 @@ def register_user_workflow(
 
     except IntegrityError as exc:
         db.rollback()
-        
-        # (Since we flushed the user first, an IntegrityError here means email conflict)
         logger.warning(f"Registration conflict for: {user_data.email}. Details: {exc}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -91,17 +89,17 @@ def register_user_workflow(
             detail="Unable to complete registration.",
         )
 
-    # 5. Background email delivery
+    # 5. Background email delivery with the 6-digit code
     full_name = f"{new_user.first_name} {new_user.last_name}"
     background_tasks.add_task(
         send_verification_email, 
         email=user_data.email,
         full_name=full_name, 
-        verification_token=verification_token,
+        verification_code=verification_code,
     )
 
     return RegistrationResponse(
-        message="Registration successful. Please check your email to verify your account.",
+        message="Registration successful. Please check your email for your 6-digit verification code.",
         requires_verification=True,
     )
 

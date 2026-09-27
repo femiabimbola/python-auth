@@ -76,8 +76,7 @@ def resend_verification( payload: EmailRequestSchema, background_tasks: Backgrou
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_200_OK)
-def request_password_reset(payload: PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
-):
+def request_password_reset(payload: PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         return services.request_password_reset_workflow(db, payload.email, background_tasks)
     except Exception:

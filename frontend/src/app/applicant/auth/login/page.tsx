@@ -98,8 +98,7 @@ export default function LoginPage() {
               const fieldName = err.loc[1] as keyof LoginFormValues;
               if (fieldName) {
                 form.setError(fieldName, {
-                  type: "server",
-                  message: err.msg.replace(/^Value error,\s*/i, ""),
+                  type: "server",  message: err.msg.replace(/^Value error,\s*/i, ""),
                 });
               }
             });
@@ -130,10 +129,7 @@ export default function LoginPage() {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to connect to the server.";
+        const message = error instanceof Error ? error.message : "Failed to connect to the server.";
         setApiError(message);
       } finally {
         setIsLoading(false);
@@ -241,7 +237,7 @@ export default function LoginPage() {
           <p className="text-center py-4 text-sm text-zinc-500 dark:text-zinc-400">
             Don&apos;t have an account?{" "}
             <a
-              href="/applicant/register"
+              href="/applicant/auth/register"
               className="text-blue-600 font-medium hover:underline dark:text-blue-400"
             >
               Register here

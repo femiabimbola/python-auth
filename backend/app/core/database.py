@@ -42,7 +42,7 @@ class Base(DeclarativeBase):
 # We explicitly import the split models here. This registers them into 
 # Base.metadata so that `create_tables()` or Alembic migrations can detect them.
 from app.modules.users.models import User, JobSeekerProfile, EmployerProfile
-from app.modules.auth.models import RefreshToken, EmailVerificationToken, PasswordResetToken
+from app.modules.auth.models import RefreshToken, EmailVerificationCode, PasswordResetToken
 from app.modules.jobs.models import ( Job, JobApplication, Skill, WorkExperience, Education, JobSeekerSkill )
 
 def create_tables() -> None:
