@@ -29,18 +29,21 @@ class RefreshToken(Base):
         return not self.is_expired() and not self.is_revoked
     
 
-
-class EmailVerificationToken(Base):
-    __tablename__ = "email_verification_tokens"
+class EmailVerificationCode(Base):
+    __tablename__ = "email_verification_codes"
 
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    token = Column(String(255), unique=True, index=True, nullable=False)
+    
+    code = Column(String(6), index=True, nullable=False) 
+    
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-     # Relationship back to user
-    user = relationship("User", back_populates="email_verification_tokens")
+    
+    # Relationship back to user 
+    # Note: You MUST update the `User` model's back_populates to match this!
+    user = relationship("User", back_populates="email_verification_codes")
 
     def is_expired(self) -> bool:
         return datetime.now(timezone.utc) > self.expires_at

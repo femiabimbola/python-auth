@@ -31,7 +31,7 @@ class User(Base):
     # Auth relationships
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
-    email_verification_tokens= relationship("EmailVerificationToken", back_populates="user", cascade="all, delete-orphan")
+    email_verification_codes = relationship("EmailVerificationCode", back_populates="user")
     
     # Role-specific profiles (one-to-one, only one populated based on role)
     job_seeker_profile = relationship("JobSeekerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
