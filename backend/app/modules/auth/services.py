@@ -103,73 +103,68 @@ def register_user_workflow(
         requires_verification=True,
     )
 
-
-def verify_user_email_workflow(db: Session, token: str) -> dict:
-    """
-    Validates the verification token, activates the user, and marks the token as used.
-    """
-    # 1. Look up the token in the database
-    token_record = (
-        db.query(EmailVerificationToken)
-        .filter(EmailVerificationToken.token == token)
+def verify_user_email_workflow(db: Session, otp: str) -> dict:
+    """Validates the OTP, activates the user, and marks the code as used."""
+    # 1. Look up the code
+    code_record = (
+        db.query(EmailVerificationCode)
+        .filter(EmailVerificationCode.code == otp)
         .first()
     )
 
-    if not token_record:
+    if not code_record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid verification token.",
+            detail="Invalid verification code.",
         )
 
-    # 2. Check if the token has already been used
-    if token_record.used:
+    # 2. Check if already used — column is `used_at`, NOT `used`
+    if code_record.used_at is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This token has already been used.",
+            detail="This code has already been used.",
         )
 
-    # 3. Check if the token has expired
-    db_expires_at = token_record.expires_at
+    # 3. Check expiry
+    db_expires_at = code_record.expires_at
     if db_expires_at.tzinfo is None:
         db_expires_at = db_expires_at.replace(tzinfo=timezone.utc)
 
     if datetime.now(timezone.utc) > db_expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Verification token has expired. Please request a new one.",
+            detail="Verification code has expired. Please request a new one.",
         )
 
-    # 4. Fetch the associated user
-    user = db.query(User).filter(User.id == token_record.user_id).first()
+    # 4. Fetch the user
+    user = db.query(User).filter(User.id == code_record.user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User associated with this token was not found.",
+            detail="User associated with this code was not found.",
         )
 
-    # 5. Fast-track if the user is already verified and active (e.g. accidental double clicks)
+    # 5. Already verified? Fast-track
     if user.is_verified and user.is_active:
         return {"message": "Your account is already verified and active. Please log in."}
 
-    # 6. Execute updates inside a single transaction block
+    # 6. Commit updates — set the DATETIME column, not a bool
     try:
         user.is_verified = True
-        user.is_active = True 
-        token_record.used = True
-        
+        user.is_active = True
+        code_record.used_at = datetime.now(timezone.utc)
+
         db.commit()
-        logger.info(f"User email verified and account activated successfully for user_id: {user.id}")
-        
-    except Exception as exc:
+        logger.info(f"User email verified and activated for user_id: {user.id}")
+    except Exception:
         db.rollback()
-        logger.exception(f"Unexpected database error during email verification for token: {token}")
+        logger.exception("Unexpected database error during email verification")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to complete email verification due to a server error.",
         )
 
     return {"message": "Email verified successfully! Your account is active and you can now log in."}
-
 
 def get_user_profile_status(user: User) -> bool:
     """

@@ -69,3 +69,6 @@ class PasswordResetVerify(BaseModel):
 
 class PasswordResetConfirmResponse(BaseModel):
     message: str
+
+class VerifyEmailRequest(BaseModel):
+    otp: str  

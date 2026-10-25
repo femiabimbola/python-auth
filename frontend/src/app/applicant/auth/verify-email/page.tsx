@@ -66,8 +66,14 @@ export default function VerifyEmailPage() {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          const errorMessage =
-            data.message || data.detail || "Invalid verification code.";
+          let errorMessage = "Invalid verification code.";
+          if (typeof data.detail === "string") {
+            errorMessage = data.detail; // your HTTPException errors
+          } else if (Array.isArray(data.detail)) {
+            errorMessage = data.detail.map((e:any) => e.msg).join(", "); // 422 validation errors
+          } else if (data.message) {
+            errorMessage = data.message;
+          }
           throw new Error(errorMessage);
         }
 
@@ -102,7 +108,8 @@ export default function VerifyEmailPage() {
           Verify your email
         </CardTitle>
         <CardDescription>
-          We&apos;ve sent a 6-digit verification code to your email address. Please enter it below.
+          We&apos;ve sent a 6-digit verification code to your email address.
+          Please enter it below.
         </CardDescription>
       </CardHeader>
 
@@ -127,7 +134,7 @@ export default function VerifyEmailPage() {
                     <FieldLabel htmlFor={field.name} className="sr-only">
                       One-Time Password
                     </FieldLabel>
-                    
+
                     {/* Shadcn Input OTP Component - 6 Digits */}
                     <InputOTP maxLength={6} {...field}>
                       <InputOTPGroup>
