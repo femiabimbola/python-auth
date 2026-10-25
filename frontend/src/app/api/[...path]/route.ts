@@ -3,6 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
+const AUTH_COOKIE_BASE = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+} as const;
+
 // Helper function to resolve the dynamic path segments asynchronously
 async function extractPath(params: Promise<{ path: string[] }>) {
   return (await params).path;
@@ -40,29 +47,52 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   }
 }
 
+
 async function proxyRequest(request: NextRequest, method: string, pathSegments: string[]) {
-  // 1. Build downstream URL, ensuring the /api prefix is preserved for your FastAPI backend
+  // 1. Build downstream URL, preserving the /api prefix for the FastAPI backend
   const backendPath = `/api/${pathSegments.join('/')}`;
   const searchParams = request.nextUrl.search;
   const targetUrl = `${BACKEND_URL}${backendPath}${searchParams}`;
 
+  const pathKey = pathSegments.join('/');
+  const isLoginPath = pathKey === 'auth/login';
+  const isLogoutPath = pathKey === 'auth/logout'; // NEW
+
   // Read cookies from incoming frontend request
   const cookieStore = request.cookies;
-  let accessToken = cookieStore.get('access_token')?.value;
+  const accessToken = cookieStore.get('access_token')?.value;
   const refreshToken = cookieStore.get('refresh_token')?.value;
 
-  // 2. Clone incoming headers and balance the Host header to prevent CORS/Host mismatches
+  // 2. Clone incoming headers and rebalance Host to prevent CORS/Host mismatches
   const forwardHeaders = new Headers(request.headers);
   forwardHeaders.set('host', new URL(BACKEND_URL).host);
   if (accessToken) {
     forwardHeaders.set('Authorization', `Bearer ${accessToken}`);
   }
 
-  // 3. Extract request body as an ArrayBuffer to remain stream-friendly and upload-safe
-  let body: ArrayBuffer | undefined = undefined;
+  // 3. Extract request body as ArrayBuffer (stream-friendly, upload-safe)
+  let body: ArrayBuffer | undefined;
   if (method !== 'GET' && method !== 'DELETE') {
     body = await request.arrayBuffer();
   }
+
+  // NEW --------------------------------------------------------------------
+  // The refresh_token lives in an HttpOnly cookie, so the browser cannot read
+  // it to build the logout body that FastAPI's RefreshRequest demands. Inject
+  // it server-side. Sending '' when the cookie is absent is safe: verify_token
+  // no-ops on invalid tokens, so logout stays idempotent.
+  if (isLogoutPath) {
+    const encoded = new TextEncoder().encode(
+      JSON.stringify({ refresh_token: refreshToken ?? '' })
+    );
+    body = encoded.buffer as ArrayBuffer;
+    forwardHeaders.set('content-type', 'application/json');
+    // The incoming bodyless POST carried "Content-Length: 0" (or none);
+    // replace it so the backend reads the injected body instead of 0 bytes.
+    forwardHeaders.delete('content-length');
+    forwardHeaders.set('content-length', String(encoded.byteLength));
+  }
+  // -------------------------------------------------------------------------
 
   // Enforce a strict gateway timeout for downstream microservices
   const controller = new AbortController();
@@ -76,21 +106,18 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
       signal: controller.signal,
     });
 
-    console.log("Original request status:  79", response.status);
-    // 4. Handle token refresh automatically if backend returns a 401 Unauthorized status
+    // 4. Auto-refresh once on 401, then retry the original request
     if (response.status === 401 && refreshToken) {
-      const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, { 
+      const refreshRes = await fetch(`${BACKEND_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
         signal: controller.signal,
       });
 
-
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
-        
-        // Retry original target request with the fresh token
+
         forwardHeaders.set('Authorization', `Bearer ${refreshData.access_token}`);
         response = await fetch(targetUrl, {
           method,
@@ -99,103 +126,76 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
           signal: controller.signal,
         });
 
-        // Strip hop-by-hop HTTP headers before forwarding back to client
-        const cleanHeaders = new Headers(response.headers);
-        cleanHeaders.delete('connection');
-        cleanHeaders.delete('keep-alive');
-        cleanHeaders.delete('transfer-encoding');
-
-        const proxyResponse = new NextResponse(response.body, {
-          status: response.status,
-          headers: cleanHeaders,
-        });
-
-        const isProd = process.env.NODE_ENV === 'production';
+        const proxyResponse = buildProxyResponse(response);
 
         // Persist newly rotated tokens in secure HttpOnly cookies
         proxyResponse.cookies.set('access_token', refreshData.access_token, {
-          httpOnly: true,
-          secure: isProd,
-          sameSite: 'lax',
-          maxAge: 60 * 5, // 15 minutes
+          ...AUTH_COOKIE_BASE,
+          maxAge: 60 * 5, // 5 minutes
         });
-
         if (refreshData.refresh_token) {
           proxyResponse.cookies.set('refresh_token', refreshData.refresh_token, {
-            httpOnly: true,
-            secure: isProd,
-            sameSite: 'lax',
+            ...AUTH_COOKIE_BASE,
             maxAge: 60 * 60 * 24 * 7, // 7 days
           });
         }
 
         clearTimeout(timeout);
         return proxyResponse;
-      } else {
-        // Clear expired credentials explicitly if refresh request fails
-        const errorResponse = NextResponse.json(
-          { detail: 'Session expired. Please log in again.' },
-          { status: 401 }
-        );
-        errorResponse.cookies.delete('access_token');
-        errorResponse.cookies.delete('refresh_token');
-        clearTimeout(timeout);
-        return errorResponse;
       }
-    }
 
-    // Clean up proxy tracking and transport headers
-    const cleanHeaders = new Headers(response.headers);
-    cleanHeaders.delete('connection');
-    cleanHeaders.delete('keep-alive');
-    cleanHeaders.delete('transfer-encoding');
+      // Refresh failed → session is dead, clear credentials explicitly
+      const errorResponse = NextResponse.json(
+        { detail: 'Session expired. Please log in again.' },
+        { status: 401 }
+      );
+      errorResponse.cookies.set('access_token', '', { ...AUTH_COOKIE_BASE, maxAge: 0 });
+      errorResponse.cookies.set('refresh_token', '', { ...AUTH_COOKIE_BASE, maxAge: 0 });
+      clearTimeout(timeout);
+      return errorResponse;
+    }
 
     clearTimeout(timeout);
 
-    // Intercept successful logins to extract response data and set browser cookies
-    const isLoginPath = pathSegments.join('/') === 'auth/login';
+    // NEW --------------------------------------------------------------------
+    // Successful logout: expire both cookies so the browser stops sending the
+    // revoked refresh token AND the still-valid access token.
+    if (isLogoutPath && response.ok) {
+      const proxyResponse = buildProxyResponse(response);
+      proxyResponse.cookies.set('access_token', '', { ...AUTH_COOKIE_BASE, maxAge: 0 });
+      proxyResponse.cookies.set('refresh_token', '', { ...AUTH_COOKIE_BASE, maxAge: 0 });
+      return proxyResponse;
+    }
+    // -------------------------------------------------------------------------
+
+    // Intercept successful logins → extract tokens → set browser cookies
     if (response.ok && isLoginPath) {
-      const responseClone = response.clone();
       try {
-        const loginData = await responseClone.json();
-        const proxyResponse = new NextResponse(response.body, {
-          status: response.status,
-          headers: cleanHeaders,
-        });
+        const loginData = await response.clone().json();
+        const proxyResponse = buildProxyResponse(response);
 
-        const isProd = process.env.NODE_ENV === 'production';
-
-        // Set access and refresh tokens as HttpOnly cookies for subsequent requests/middleware
         if (loginData.access_token) {
           proxyResponse.cookies.set('access_token', loginData.access_token, {
-            httpOnly: true,
-            secure: isProd,
-            sameSite: 'lax',
-            maxAge: 15 * 60,
+            ...AUTH_COOKIE_BASE,
+            maxAge: 15 * 60, // 15 minutes
           });
         }
-
         if (loginData.refresh_token) {
           proxyResponse.cookies.set('refresh_token', loginData.refresh_token, {
-            httpOnly: true,
-            secure: isProd,
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60,
+            ...AUTH_COOKIE_BASE,
+            maxAge: 7 * 24 * 60 * 60, // 7 days
           });
         }
 
         return proxyResponse;
       } catch (e) {
-        console.error("Failed to inject login cookies in proxy:", e);
+        console.error('Failed to inject login cookies in proxy:', e);
+        // fall through to the plain proxied response
       }
     }
 
-    // Return direct stream back to user agent for ordinary proxy paths
-    return new NextResponse(response.body, {
-      status: response.status,
-      headers: cleanHeaders,
-    });
-
+    // Ordinary proxy path: stream straight back to the user agent
+    return buildProxyResponse(response);
   } catch (err) {
     clearTimeout(timeout);
     if (err instanceof Error && err.name === 'AbortError') {
@@ -206,4 +206,16 @@ async function proxyRequest(request: NextRequest, method: string, pathSegments: 
     }
     throw err;
   }
+}
+
+// Strip hop-by-hop HTTP headers before forwarding a backend response to the client
+function buildProxyResponse(response: Response): NextResponse {
+  const cleanHeaders = new Headers(response.headers);
+  cleanHeaders.delete('connection');
+  cleanHeaders.delete('keep-alive');
+  cleanHeaders.delete('transfer-encoding');
+  return new NextResponse(response.body, {
+    status: response.status,
+    headers: cleanHeaders,
+  });
 }
