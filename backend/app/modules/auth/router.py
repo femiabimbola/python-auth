@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, B
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema, PasswordResetRequest, PasswordResetVerify
+from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema, PasswordResetRequest, PasswordResetVerify, VerifyEmailRequest
 from app.modules.users.schemas import UserCreate
 from app.modules.auth import services  # Bring in our feature services
 logger = logging.getLogger(__name__)
@@ -34,12 +34,11 @@ def register(user_data: UserCreate, background_tasks: BackgroundTasks, request: 
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while finalizing the request context."
         )
-    
 
-@router.get("/verify-email", status_code=status.HTTP_200_OK)
-def verify_email(token: str =  Query(..., description="Email Verification token"),db: Session = Depends(get_db)):
-    """Endpoint to process the email verification link clicked by the user."""
-    return services.verify_user_email_workflow(db=db, token=token)
+@router.post("/verify-email", status_code=status.HTTP_200_OK)
+def verify_email_by_code(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
+    """Endpoint for the verify-code form submission."""
+    return services.verify_user_email_workflow(db=db, otp=payload.otp)
 
 
 @router.post("/login", response_model=TokenResponse)
