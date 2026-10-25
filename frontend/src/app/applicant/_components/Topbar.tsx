@@ -44,7 +44,7 @@ export function Topbar() {
     queryFetcher
   );
 
-  // Keyboard shortcut (⌘K or Ctrl+K) to focus search
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -82,16 +82,14 @@ export function Topbar() {
         throw new Error(errorMessage);
       }
 
-      router.push("/login");
+      router.push("/applicant/auth/login");
       router.refresh();
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
       }
       const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to connect to the server.";
+        error instanceof Error  ? error.message  : "Failed to connect to the server.";
       setApiError(message);
     } finally {
       setIsLoggingOut(false);
@@ -241,12 +239,10 @@ export function Topbar() {
                 </p>
               </div>
             )}
-            <DropdownMenuItem style={{ color: "var(--ink)" }}>
+            <DropdownMenuItem style={{}}>
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem style={{ color: "var(--ink)" }}>
-              Billing
-            </DropdownMenuItem>
+      
             <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={isLoggingOut}
