@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -71,7 +70,6 @@ export default function LoginPage() {
 
   const onSubmit = useCallback(
     async (values: LoginFormValues) => {
-      // Abort any previous ongoing requests
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;

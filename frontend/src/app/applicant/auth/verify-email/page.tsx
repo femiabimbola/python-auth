@@ -78,7 +78,7 @@ export default function VerifyEmailPage() {
         }
 
         // On success, redirect the user to the dashboard or login page
-        router.push("/applicant/dashboard");
+        router.push("/applicant/auth/login");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
