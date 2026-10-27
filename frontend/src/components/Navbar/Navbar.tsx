@@ -22,8 +22,8 @@ export function Navbar() {
         ))}
       </ul>
       <div className={styles.navActions}>
-        <Link href="/applicant/auth/login" className={styles.btnGhost}>Sign in</Link>
-        <Link href="/applicant/auth/register" className={styles.btnPrimary}>Register</Link>
+        <Link href="/auth/login" className={styles.btnGhost}>Sign in</Link>
+        <Link href="/auth/register" className={styles.btnPrimary}>Register</Link>
       </div>
     </nav>
   );
