@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useCallback, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -71,7 +70,6 @@ export default function LoginPage() {
 
   const onSubmit = useCallback(
     async (values: LoginFormValues) => {
-      // Abort any previous ongoing requests
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -98,8 +96,7 @@ export default function LoginPage() {
               const fieldName = err.loc[1] as keyof LoginFormValues;
               if (fieldName) {
                 form.setError(fieldName, {
-                  type: "server",
-                  message: err.msg.replace(/^Value error,\s*/i, ""),
+                  type: "server",  message: err.msg.replace(/^Value error,\s*/i, ""),
                 });
               }
             });
@@ -115,26 +112,22 @@ export default function LoginPage() {
         const { has_profile, role } = data;
 
       if (!has_profile) {
-        // Redirect to role-specific onboarding
         if (role === "job_seeker") {
           router.push("/onboarding/job-seeker");
         } else if (role === "employer") {
           router.push("/onboarding/employer");
         } else {
-          router.push("/dashboard");
+          router.push("/odin/dashboard");
         }
         return;
       }
 
-        router.push("/dashboard");
+        router.push("/applicant/dashboard");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to connect to the server.";
+        const message = error instanceof Error ? error.message : "Failed to connect to the server.";
         setApiError(message);
       } finally {
         setIsLoading(false);
@@ -242,7 +235,7 @@ export default function LoginPage() {
           <p className="text-center py-4 text-sm text-zinc-500 dark:text-zinc-400">
             Don&apos;t have an account?{" "}
             <a
-              href="/register"
+              href="/applicant/auth/register"
               className="text-blue-600 font-medium hover:underline dark:text-blue-400"
             >
               Register here

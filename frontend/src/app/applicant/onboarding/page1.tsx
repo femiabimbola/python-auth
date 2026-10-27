@@ -1,6 +1,7 @@
 import { fetchApi } from '@/lib/fetch-api';
 import { JobSeekerForm } from "./components/job-seeker-form";
-import { Toaster } from "@/components/ui/sonner"
+// import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "./"
 import { redirect } from "next/navigation";
 
 // Define the possible outcomes of checking the profile
@@ -56,7 +57,7 @@ export default async function Home() {
     // If result.status === 'not_found', it skips all redirects and safely renders the form below!
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
+    <main className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 py-8 px-4">
       <div className="max-w-4xl mx-auto mb-8 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">
           Create Your Profile
