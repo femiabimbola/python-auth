@@ -76,7 +76,7 @@ export function NavHeader() {
         {/* Right Actions */}
         <div className="flex items-center" style={{ gap: "12px" }}>
           <Link
-            href="#"
+            href="/auth/login"
             className="hidden no-underline transition-colors hover:opacity-80 sm:block"
             style={{
               color: "#161616",

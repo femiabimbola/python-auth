@@ -9,9 +9,8 @@ import { HowItWorks } from './_components/HowItWorks';
 import { HiringCTA } from './_components/CTA';
 import { Footer } from './_components/Footer';
 
-import { Hero } from '@/app/(landing)/_components/HeroOld/Hero';
 
-import { DashboardPreview } from '@/app/(landing)/_components/DashboardPreview/DashboardPreview';
+
 import { Features } from '@/app/(landing)/_components/Features/Features';
 import { SocialProof } from '@/app/(landing)/_components/SocialProof/SocialProof';
 
