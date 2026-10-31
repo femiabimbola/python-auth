@@ -1,8 +1,13 @@
 
 // import { OrbBackground } from '@/components/OrbBackground/OrbBackground';
-// import { Navbar } from '@/components/Navbar/Navbar';
+
 import { NavHeader } from './_components/Navbar';
 import { HeroSection } from './_components/Hero';
+import { CategorySection } from './_components/Category';
+import { FeaturedJobs } from './_components/FeatureJob';
+import { HowItWorks } from './_components/HowItWorks';
+import { HiringCTA } from './_components/CTA';
+import { Footer } from './_components/Footer';
 
 import { Hero } from '@/app/(landing)/_components/HeroOld/Hero';
 
@@ -11,20 +16,17 @@ import { Features } from '@/app/(landing)/_components/Features/Features';
 import { SocialProof } from '@/app/(landing)/_components/SocialProof/SocialProof';
 
 
-import { Footer } from '@/components/Footer/Footer';
 
 export default function HomePage() {
   return (
     <>
-      {/* <OrbBackground /> */}
-     {/* <Navbar /> */}
      <NavHeader />
       <main>
         <HeroSection />
-        {/* <Hero /> */}
-        {/* <DashboardPreview /> */}
-         {/* <Features /> */}
-        {/* <SocialProof /> */}
+        <CategorySection />
+        <FeaturedJobs />
+        <HowItWorks />
+        <HiringCTA />
       </main>
       <Footer />
     
