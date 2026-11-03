@@ -7,7 +7,7 @@ export function LoginForm() {
       {/* Top Header */}
       <div className="flex justify-end text-sm text-gray-600">
         <span>Don't have an account? </span>
-        <Link href="#" className="ml-1 flex items-center font-semibold text-[#0056FF] hover:underline">
+        <Link href="/auth/register" className="ml-1 flex items-center font-semibold text-[#0056FF] hover:underline">
           Sign Up
           <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
