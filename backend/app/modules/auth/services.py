@@ -17,13 +17,12 @@ from app.core.security import (
     create_refresh_token,
     verify_token,
 )
-from app.modules.users.models import User
+from app.modules.users.models import User, UserRole
 from app.modules.auth.models import RefreshToken, EmailVerificationCode, PasswordResetToken  
 from app.modules.auth.schemas import UserLogin, RefreshRequest, RegistrationResponse, EmailRequestSchema
 from app.modules.users.schemas import UserCreate
 from datetime import datetime, timedelta, timezone
 from app.services.email import send_verification_email, send_password_reset_email
-from app.modules.users.models import User
 from app.core.database import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -49,8 +48,9 @@ def register_user_workflow(
             id=user_uuid,
             email=user_data.email,
             hashed_password=hash_password(user_data.password),
-            first_name=user_data.first_name,
+            first_name=user_data.first_name,    
             last_name=user_data.last_name,
+            role=UserRole(user_data.account_type),   
             is_verified=False,
             is_active=False,
         )

@@ -1,11 +1,16 @@
 # app/modules/users/schemas.py
 import re  # regular expression
 from datetime import datetime
+from enum import Enum
 from typing import List, Optional, Self
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.modules.users.models import UserRole
 from app.core.enums import JobType, SalaryCurrency, WorkplaceType
+
+class AccountType(str, Enum):
+    EMPLOYER = "employer"
+    JOB_SEEKER = "job_seeker"
 
 class UserCreate(BaseModel):
     """Schema for user registration."""
@@ -17,8 +22,13 @@ class UserCreate(BaseModel):
     last_name: str = Field(
         ..., min_length=1, max_length=100, description="User's last name"
     )
+    account_type: AccountType = Field(
+        ..., description="Account type: employer or job_seeker"
+    )
     password: str
     confirm_password: str
+
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     @field_validator("password")
     @classmethod
@@ -61,8 +71,6 @@ class UserCreate(BaseModel):
         if self.password != self.confirm_password:
             raise ValueError("Passwords do not match")
         return self
-    
-    
 
 
 class UserResponse(BaseModel):
@@ -120,6 +128,7 @@ class JobSeekerProfileBase(BaseModel):
 class JobSeekerProfileCreate(JobSeekerProfileBase):
     """Schema for creating a new job seeker profile."""
     pass
+
 
 class JobSeekerProfileResponse(JobSeekerProfileBase):
     """Schema for returning a job seeker profile."""
