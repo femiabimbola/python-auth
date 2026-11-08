@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, B
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema, PasswordResetRequest, PasswordResetVerify, VerifyEmailRequest
+from app.modules.auth.schemas import UserLogin, TokenResponse, RefreshRequest, MessageResponse, RegistrationResponse, EmailRequestSchema, PasswordResetRequest, PasswordResetVerify, VerifyEmailRequest, ResendVerificationRequest
 from app.modules.users.schemas import UserCreate
 from app.modules.auth import services  # Bring in our feature services
 logger = logging.getLogger(__name__)
@@ -38,6 +38,27 @@ def register(user_data: UserCreate, background_tasks: BackgroundTasks, request: 
 def verify_email_by_code(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
     """Endpoint for the verify-code form submission."""
     return services.verify_user_email_workflow(db=db, otp=payload.otp)
+
+
+
+@router.post("/resend-verification", status_code=status.HTTP_200_OK)
+def resend_verification(
+    payload: ResendVerificationRequest, background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Send a fresh OTP to an unverified user (30s cooldown enforced server-side)."""
+    try:
+        return services.resend_verification_code_workflow(
+            db=db, email=payload.email, background_tasks=background_tasks,
+        )
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while finalizing the request context.",
+        )
 
 
 @router.post("/login", response_model=TokenResponse)

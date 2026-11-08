@@ -11,7 +11,7 @@ from app.core.enums import JobType, SalaryCurrency, WorkplaceType
 class AccountType(str, Enum):
     EMPLOYER = "employer"
     JOB_SEEKER = "job_seeker"
-
+    
 class UserCreate(BaseModel):
     """Schema for user registration."""
 

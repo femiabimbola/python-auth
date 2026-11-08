@@ -18,6 +18,9 @@ class RegistrationResponse(BaseModel):
     message: str
     requires_verification: bool
 
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
 class TokenResponse(BaseModel):
     """Schema for token pair response."""
     access_token: str

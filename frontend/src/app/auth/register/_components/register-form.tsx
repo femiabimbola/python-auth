@@ -17,7 +17,7 @@ import useSWRMutation from "swr/mutation";
 import * as z from "zod";
 import Link from "next/link";
 
-type AccountType = "employer" | "candidate";
+type AccountType = "employer" | "job_seeker";
 
 const registerSchema = z
   .object({
@@ -26,10 +26,10 @@ const registerSchema = z
     email: z.email("Please enter a valid email address."),
     account_type: z
       .string()
-      .min(
-        1,
+      .refine(
+        (v) => v === "employer" || v === "job_seeker",
         "Please select an account type.",
-      ) as unknown as z.ZodType<AccountType>,
+      ),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters long.")
@@ -46,8 +46,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 // 2. SWR Mutation Fetcher
 async function registerFetcher(
-  url: string,
-  { arg }: { arg: RegisterFormValues },
+  url: string, { arg }: { arg: RegisterFormValues },
 ) {
   const response = await fetch(url, {
     method: "POST",
@@ -90,7 +89,7 @@ export function RegisterForm() {
       first_name: "",
       last_name: "",
       email: "",
-      account_type: "candidate" as AccountType,
+      account_type: "",
       password: "",
       confirm_password: "",
     },
@@ -104,7 +103,7 @@ export function RegisterForm() {
 
     try {
       await trigger(values);
-      router.push(`/auth/verify-email`);
+      router.push(`/auth/verify-email?email=${encodeURIComponent(values.email)}`);
     } catch (err: any) {
       const status = err.status;
       const data = err.data;
@@ -193,8 +192,7 @@ export function RegisterForm() {
             control={form.control}
             render={({ field, fieldState }) => (
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor={field.name}
+                <label htmlFor={field.name}
                   className="text-sm font-medium text-gray-700"
                 >
                   First Name

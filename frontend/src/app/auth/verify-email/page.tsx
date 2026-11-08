@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
@@ -25,7 +25,6 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -73,8 +72,13 @@ function otpSlotClassName(invalid: boolean) {
   ].join(" ");
 }
 
-export default function VerifyEmailPage() {
+/* ---------------------------------------------------------------------- */
+/* Inner component — needs Suspense because of useSearchParams            */
+/* ---------------------------------------------------------------------- */
+function VerifyEmailForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email");
 
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -111,7 +115,7 @@ export default function VerifyEmailPage() {
         const response = await fetch("/api/auth/verify-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(values),
+          body: JSON.stringify({ ...values, email }),
           signal: controller.signal,
           credentials: "include",
         });
@@ -134,27 +138,42 @@ export default function VerifyEmailPage() {
         setIsLoading(false);
       }
     },
-    [router],
+    [router, email],
   );
 
   const handleResendOTP = useCallback(async () => {
     if (cooldown > 0 || isResending) return;
 
+    if (!email) {
+      setApiError("We couldn't identify your account. Please register again.");
+      return;
+    }
+
     setApiError(null);
     setIsResending(true);
-    setCooldown(RESEND_COOLDOWN_SECONDS);
 
     try {
       const response = await fetch("/api/auth/resend-verification", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ email }),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error("We couldn't send a new code. Please try again.");
+        // Server already tells us how long to wait (429) — surface that message
+        throw new Error(
+          extractErrorMessage(data) ||
+            "We couldn't send a new code. Please try again.",
+        );
       }
+
+      // Only start the cooldown after the server accepted the request
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      form.setValue("otp", ""); // optional: clear stale digits for the new code
     } catch (error) {
-      setCooldown(0);
       setApiError(
         error instanceof Error
           ? error.message
@@ -163,7 +182,7 @@ export default function VerifyEmailPage() {
     } finally {
       setIsResending(false);
     }
-  }, [cooldown, isResending]);
+  }, [cooldown, isResending, email, form]);
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#F4F6F8] antialiased">
@@ -172,16 +191,14 @@ export default function VerifyEmailPage() {
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 overflow-hidden"
       >
-        <div className="absolute -right-40 -top-40 h-[32rem] w-[32rem] rounded-full bg-[#0F62FE]/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-[32rem] w-[32rem] rounded-full bg-[#00A3A6]/10 blur-3xl" />
+        <div className="absolute -right-40 -top-40 h-128 w-lg rounded-full bg-[#0F62FE]/10 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 h-128 w-lg rounded-full bg-[#00A3A6]/10 blur-3xl" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(22,22,22,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(22,22,22,0.045)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black_15%,transparent_72%)]" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         <div className="grid w-full overflow-hidden rounded-3xl border border-[#E4E7EB] bg-white shadow-[0_30px_70px_-30px_rgba(22,22,22,0.35)] lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)]">
-          {/* ---------------------------------------------------------------- */}
-          {/* Brand panel                                                      */}
-          {/* ---------------------------------------------------------------- */}
+      
           <aside className="relative hidden flex-col justify-between overflow-hidden bg-[#161616] p-10 lg:flex">
             <div aria-hidden="true" className="pointer-events-none absolute inset-0">
               <div className="absolute -left-20 -top-24 h-80 w-80 rounded-full bg-[#0F62FE]/45 blur-3xl" />
@@ -256,8 +273,13 @@ export default function VerifyEmailPage() {
               Verify your email
             </h1>
             <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[#525252]">
-              Enter the 6-digit code we sent to your email address to confirm
-              it&apos;s really you.
+              Enter the 6-digit code we sent to{" "}
+              {email ? (
+                <span className="font-medium text-[#161616]">{email}</span>
+              ) : (
+                "your email address"
+              )}{" "}
+              to confirm it&apos;s really you.
             </p>
 
             {apiError && (
@@ -378,5 +400,14 @@ export default function VerifyEmailPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <VerifyEmailForm />
+    </Suspense>
   );
 }
