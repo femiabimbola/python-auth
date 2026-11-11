@@ -17,16 +17,21 @@ from app.core.security import (
     create_refresh_token,
     verify_token,
 )
-from app.modules.users.models import User
+from app.modules.users.models import User, UserRole
 from app.modules.auth.models import RefreshToken, EmailVerificationCode, PasswordResetToken  
 from app.modules.auth.schemas import UserLogin, RefreshRequest, RegistrationResponse, EmailRequestSchema
 from app.modules.users.schemas import UserCreate
 from datetime import datetime, timedelta, timezone
 from app.services.email import send_verification_email, send_password_reset_email
-from app.modules.users.models import User
 from app.core.database import SessionLocal
 
 logger = logging.getLogger(__name__)
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+def _ensure_aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 def register_user_workflow(
     db: Session, 
@@ -49,8 +54,9 @@ def register_user_workflow(
             id=user_uuid,
             email=user_data.email,
             hashed_password=hash_password(user_data.password),
-            first_name=user_data.first_name,
+            first_name=user_data.first_name,    
             last_name=user_data.last_name,
+            role=UserRole(user_data.account_type),   
             is_verified=False,
             is_active=False,
         )
@@ -102,6 +108,69 @@ def register_user_workflow(
         message="Registration successful. Please check your email for your 6-digit verification code.",
         requires_verification=True,
     )
+
+
+
+def resend_verification_code_workflow(
+    db: Session, email: str, background_tasks: BackgroundTasks,
+) -> dict:
+    
+    RESEND_COOLDOWN_SECONDS = 30
+    OTP_EXPIRY_MINUTES = 15
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        # Don't reveal whether the email exists — same response shape as success
+        return {"message": "If an unverified account exists for this email, a new code has been sent."}
+
+    if user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account is already verified. Please log in.",
+        )
+
+    # --- Server-side cooldown (mirrors the frontend's 30s timer) ---
+    latest = (
+        db.query(EmailVerificationCode)
+        .filter(EmailVerificationCode.user_id == user.id)
+        .order_by(EmailVerificationCode.created_at.desc())
+        .first()
+    )
+    if latest is not None:
+        elapsed = (_utcnow() - _ensure_aware(latest.created_at)).total_seconds()
+        remaining = RESEND_COOLDOWN_SECONDS - int(elapsed)
+        if remaining > 0:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Please wait {remaining} seconds before requesting a new code.",
+                headers={"Retry-After": str(remaining)},
+            )
+
+    # Invalidate previous codes so only the newest one works (keeps audit trail via used_at)
+    db.query(EmailVerificationCode).filter(
+        EmailVerificationCode.user_id == user.id,
+        EmailVerificationCode.used_at.is_(None),
+    ).update({"used_at": _utcnow()}, synchronize_session=False)
+
+    new_code = f"{secrets.randbelow(1_000_000):06d}"
+    db.add(EmailVerificationCode(
+        user_id=user.id,
+        code=new_code,
+        expires_at=_utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+    ))
+    db.commit()
+
+    full_name = f"{user.first_name} {user.last_name}"
+    background_tasks.add_task(
+        send_verification_email,
+        email=user.email,
+        full_name=full_name,
+        verification_code=new_code,
+    )
+
+    logger.info(f"Verification code resent to: {user.email}")
+    return {"message": "A new verification code has been sent to your email."}
+
 
 def verify_user_email_workflow(db: Session, otp: str) -> dict:
     """Validates the OTP, activates the user, and marks the code as used."""
@@ -181,6 +250,7 @@ def get_user_profile_status(user: User) -> bool:
         return True
 
     return False
+
 
 
 def authenticate_user_workflow(db: Session, credentials: UserLogin) -> tuple[str, str, str, bool]:
